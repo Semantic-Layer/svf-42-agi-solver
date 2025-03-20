@@ -12,3 +12,29 @@ docs/
 
 # Dotenv file
 .env
+
+# Hardhat files
+artifacts/
+typechain/
+typechain-types/
+
+# Foundry
+forge-cache/
+forge-out/
+
+# Coverage
+coverage/
+coverage.json
+
+# Gas report
+gas-report.txt
+
+# Deployment artifacts
+deployments/
+
+# Local development files
+.DS_Store
+node_modules/
+.vscode/
+*.swp
+*.swo
