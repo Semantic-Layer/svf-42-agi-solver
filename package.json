@@ -4,6 +4,7 @@
 	"description": "",
 	"main": "dist/index.js",
 	"scripts": {
+		"preinstall": "npx only-allow pnpm",
 		"start": "npx ts-node src/index.ts",
 		"build": "npx tsc",
 		"dev": "npx ts-node-dev --respawn src/index.ts",
