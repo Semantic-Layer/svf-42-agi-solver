@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      p-queue:
+        specifier: ^8.1.0
+        version: 8.1.0
       viem:
         specifier: ^2.23.13
         version: 2.23.13(typescript@5.8.2)
@@ -198,6 +201,20 @@ packages:
       typescript:
         optional: true
 
+  p-queue@8.1.0:
+    resolution:
+      {
+        integrity: sha512-mxLDbbGIBEXTJL0zEx8JIylaj3xQ7Z/7eEVjcF9fJX4DBiH9oqe+oahYnlKKxm0Ci9TlWTyhSHgygxMxjIB2jw==,
+      }
+    engines: { node: '>=18' }
+
+  p-timeout@6.1.4:
+    resolution:
+      {
+        integrity: sha512-MyIV3ZA/PmyBN/ud8vV9XzwTrNtR4jFrObymZYnZqMmW0zA8Z17vnT0rBgFE/TlohB+YCHqXMgZzb3Csp49vqg==,
+      }
+    engines: { node: '>=14.16' }
+
   prettier@3.5.3:
     resolution:
       {
@@ -360,6 +377,13 @@ snapshots:
       typescript: 5.8.2
     transitivePeerDependencies:
       - zod
+
+  p-queue@8.1.0:
+    dependencies:
+      eventemitter3: 5.0.1
+      p-timeout: 6.1.4
+
+  p-timeout@6.1.4: {}
 
   prettier@3.5.3: {}
 
