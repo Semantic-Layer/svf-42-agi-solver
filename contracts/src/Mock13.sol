@@ -20,6 +20,9 @@ contract Mock13 is Owned {
     /// @notice the order index to the AGI
     mapping(uint256 orderIndex => AgentGeneratedIntent intent) public agis;
 
+    /// @notice tracking processed AGIs
+    uint256[] public processedAGIs;
+
     // Enum to represent order status
     enum OrderStatus {
         // pending to dispense asset to sell
@@ -109,7 +112,27 @@ contract Mock13 is Owned {
         require(intent.intentType == 0, "Invalid intent type");
         require(intent.orderStatus == OrderStatus.DispensedPendingProceeds, "Invalid order status");
         intent.orderStatus = OrderStatus.ProceedsReceived;
+        processedAGIs.push(orderIndex);
         SafeTransferLib.safeTransferFrom(ERC20(intent.assetToBuy), msg.sender, address(this), amount);
+    }
+
+    function processedAGIsLength() external view returns (uint256) {
+        return processedAGIs.length;
+    }
+
+    /// @notice get the processed AGIs
+    /// @param _start the start index
+    /// @param _end the end index
+    /// @return res the processed AGIs
+    function getProcessedAGIs(uint256 _start, uint256 _end) external view returns (uint256[] memory res) {
+        uint256 length = _end - _start;
+        res = new uint256[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            res[i] = processedAGIs[_start + i];
+        }
+
+        return res;
     }
 
     function _checkBalance(address asset, uint256 amount) internal view {
