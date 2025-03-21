@@ -11,7 +11,7 @@ contract Mock13 is Owned {
 
     /// @notice the next order index. it starts from 1
     /// @dev it is used to generate the order index for the new AGI
-    uint256 public nextOrderIndex = 1;
+    uint256 public nextOrderId = 1;
 
     /// @notice the address of the solver
     /// @dev only the owner can set the address of the solver
@@ -38,7 +38,7 @@ contract Mock13 is Owned {
         address assetToSell; // address of asset to sell (SVF42 or whitelisted)
         uint256 amountToSell; // amount of asset to sell
         address assetToBuy; // address of asset to buy (SVF42 or whitelisted)
-        uint256 orderIndex; // index in array
+        uint256 orderId; // index in array
         OrderStatus orderStatus; // 0: pending dispense, 1: dispensed pending deposit, 2: completed
     }
 
@@ -77,27 +77,27 @@ contract Mock13 is Owned {
         require(assetToSell == address(0) || assetToBuy == address(0), "Invalid asset to sell or buy");
         require(assetToSell != assetToBuy, "Asset to sell and buy cannot be the same");
 
-        uint256 orderIndex = nextOrderIndex++;
+        uint256 orderId = nextOrderId++;
 
         AgentGeneratedIntent memory newIntent = AgentGeneratedIntent({
             intentType: intentType,
             assetToSell: assetToSell,
             amountToSell: amountToSell,
             assetToBuy: assetToBuy,
-            orderIndex: orderIndex,
+            orderId: orderId,
             orderStatus: OrderStatus.PendingDispense
         });
 
-        agis[orderIndex] = newIntent;
-        emit AGIPublished(orderIndex, intentType, assetToSell, amountToSell, assetToBuy);
+        agis[orderId] = newIntent;
+        emit AGIPublished(orderId, intentType, assetToSell, amountToSell, assetToBuy);
     }
 
-    function viewAGI(uint256 orderIndex) external view returns (AgentGeneratedIntent memory) {
-        return agis[orderIndex];
+    function viewAGI(uint256 orderId) external view returns (AgentGeneratedIntent memory) {
+        return agis[orderId];
     }
 
-    function withdrawAsset(uint256 orderIndex) external onlySolver {
-        AgentGeneratedIntent storage intent = agis[orderIndex];
+    function withdrawAsset(uint256 orderId) external onlySolver {
+        AgentGeneratedIntent storage intent = agis[orderId];
         require(intent.intentType == 0, "Invalid intent type");
         require(intent.orderStatus == OrderStatus.PendingDispense, "Invalid order status");
         intent.orderStatus = OrderStatus.DispensedPendingProceeds;
@@ -107,12 +107,12 @@ contract Mock13 is Owned {
         SafeTransferLib.safeTransfer(ERC20(intent.assetToSell), msg.sender, intent.amountToSell);
     }
 
-    function depositAsset(uint256 orderIndex, uint256 amount) external onlySolver {
-        AgentGeneratedIntent storage intent = agis[orderIndex];
+    function depositAsset(uint256 orderId, uint256 amount) external onlySolver {
+        AgentGeneratedIntent storage intent = agis[orderId];
         require(intent.intentType == 0, "Invalid intent type");
         require(intent.orderStatus == OrderStatus.DispensedPendingProceeds, "Invalid order status");
         intent.orderStatus = OrderStatus.ProceedsReceived;
-        processedAGIs.push(orderIndex);
+        processedAGIs.push(orderId);
         SafeTransferLib.safeTransferFrom(ERC20(intent.assetToBuy), msg.sender, address(this), amount);
     }
 
