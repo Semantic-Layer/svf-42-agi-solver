@@ -12,8 +12,6 @@ export class BuyAssetState extends BaseState {
 	private readonly abi = parseAbi([
 		'function withdrawSVF(uint256 amount, uint256 orderIndex) external',
 		'function depositAsset(uint256 amount, uint256 orderIndex) external',
-		'function isTokenWhitelisted(address token) external view returns (bool)',
-		'function approve(address spender, uint256 amount) external returns (bool)'
 	]);
 
 	// Mock LiFi Router address on Base Sepolia
@@ -63,18 +61,6 @@ export class BuyAssetState extends BaseState {
 				chain: baseSepolia,
 				transport: http()
 			});
-
-			// Check if token is whitelisted
-			const isWhitelisted = await publicClient.readContract({
-				address: this.context.getContractAddress() as `0x${string}`,
-				abi: this.abi,
-				functionName: 'isTokenWhitelisted',
-				args: [order.assetToBuy.address as `0x${string}`]
-			});
-
-			if (!isWhitelisted) {
-				throw new Error('Token not whitelisted');
-			}
 
 			// Step 1: Withdraw SVF tokens
 			const { request: withdrawRequest } = await publicClient.simulateContract({
