@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Script} from "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {Mock13} from "../src/Mock13.sol";
 import {TokenA} from "../src/TokenA.sol";
 import {TokenB} from "../src/TokenB.sol";
 
 contract DeployScript is Script {
+    // misc
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy TokenA and TokenB
@@ -17,7 +19,7 @@ contract DeployScript is Script {
         TokenB tokenB = new TokenB();
 
         // Deploy Mock13
-        Mock13 mock13 = new Mock13();
+        Mock13 mock13 = new Mock13(deployer, deployer);
 
         // Mint some tokens for testing
         tokenA.mint(address(mock13), 1000 * 1e18);
