@@ -52,14 +52,14 @@ export class BuyAssetState extends BaseState {
 			// Create Viem clients
 			const publicClient = createPublicClient({
 				chain: baseSepolia,
-				transport: http()
+				transport: http(),
 			});
 
 			const account = privateKeyToAccount(this.context.getPrivateKey() as `0x${string}`);
 			const walletClient = createWalletClient({
 				account,
 				chain: baseSepolia,
-				transport: http()
+				transport: http(),
 			});
 
 			// Step 1: Withdraw SVF tokens
@@ -68,7 +68,7 @@ export class BuyAssetState extends BaseState {
 				abi: this.abi,
 				functionName: 'withdrawSVF',
 				args: [BigInt(order.amount), BigInt(order.orderId)],
-				account
+				account,
 			});
 
 			const withdrawHash = await walletClient.writeContract(withdrawRequest);
@@ -93,7 +93,7 @@ export class BuyAssetState extends BaseState {
 				abi: this.abi,
 				functionName: 'depositAsset',
 				args: [BigInt(order.amount), BigInt(order.orderId)],
-				account
+				account,
 			});
 
 			const depositHash = await walletClient.writeContract(depositRequest);

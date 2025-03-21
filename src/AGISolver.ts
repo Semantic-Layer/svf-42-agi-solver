@@ -241,10 +241,6 @@ export class AGISolver {
 		await this.contract.depositAsset(amount, orderIndex);
 	}
 
-	public async isTokenWhitelisted(token: string): Promise<boolean> {
-		return this.contract.isTokenWhitelisted(token);
-	}
-
 	// View methods
 	public getState(): State {
 		return this.currentState.getName();
