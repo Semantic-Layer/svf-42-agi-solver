@@ -15,7 +15,7 @@ contract PublishAGIScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         Mock13 mock13 = Mock13(MOCK13_ADDRESS);
-        
+
         // Publish an AGI to trade TokenA for TokenB
         mock13.publishAGI(
             0, // intentType (0 for trade)
@@ -28,4 +28,4 @@ contract PublishAGIScript is Script {
 
         vm.stopBroadcast();
     }
-} 
+}

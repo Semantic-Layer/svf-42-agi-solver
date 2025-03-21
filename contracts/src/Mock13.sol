@@ -9,12 +9,12 @@ contract Mock13 {
     address public AGISolverAddress = ADMIN;
 
     struct AgentGeneratedIntent {
-        uint8 intentType;      // 0 for trade, 1 for others
-        address assetToSell;   // address of asset to sell (SVF42 or whitelisted)
-        uint256 amountToSell;  // amount of asset to sell
-        address assetToBuy;    // address of asset to buy (SVF42 or whitelisted)
-        uint256 orderIndex;    // index in array
-        uint8 orderStatus;     // 0: pending dispense, 1: dispensed pending deposit, 2: completed
+        uint8 intentType; // 0 for trade, 1 for others
+        address assetToSell; // address of asset to sell (SVF42 or whitelisted)
+        uint256 amountToSell; // amount of asset to sell
+        address assetToBuy; // address of asset to buy (SVF42 or whitelisted)
+        uint256 orderIndex; // index in array
+        uint8 orderStatus; // 0: pending dispense, 1: dispensed pending deposit, 2: completed
     }
 
     AgentGeneratedIntent[] public AgentGeneratedIntentList;
@@ -36,16 +36,14 @@ contract Mock13 {
         _;
     }
 
-    function publishAGI(
-        uint8 intentType,
-        address assetToSell,
-        uint256 amountToSell,
-        address assetToBuy
-    ) external onlyAI {
+    function publishAGI(uint8 intentType, address assetToSell, uint256 amountToSell, address assetToBuy)
+        external
+        onlyAI
+    {
         require(intentType == 0, "Only trade intents supported");
-        
+
         uint256 orderIndex = AgentGeneratedIntentList.length;
-        
+
         AgentGeneratedIntent memory newIntent = AgentGeneratedIntent({
             intentType: intentType,
             assetToSell: assetToSell,
@@ -68,7 +66,7 @@ contract Mock13 {
         AgentGeneratedIntent storage intent = AgentGeneratedIntentList[orderIndex];
         require(intent.orderStatus == 0, "Invalid order status");
         require(intent.amountToSell == amount, "Amount mismatch");
-        
+
         intent.orderStatus = 1;
         SafeTransferLib.safeTransfer(ERC20(intent.assetToSell), msg.sender, amount);
     }
@@ -77,7 +75,7 @@ contract Mock13 {
         AgentGeneratedIntent storage intent = AgentGeneratedIntentList[orderIndex];
         require(intent.orderStatus == 0, "Invalid order status");
         require(intent.amountToSell == amount, "Amount mismatch");
-        
+
         intent.orderStatus = 1;
         SafeTransferLib.safeTransfer(ERC20(intent.assetToSell), msg.sender, amount);
     }
@@ -86,7 +84,7 @@ contract Mock13 {
         AgentGeneratedIntent storage intent = AgentGeneratedIntentList[orderIndex];
         require(intent.orderStatus == 1, "Invalid order status");
         require(intent.intentType == 0, "Invalid intent type");
-        
+
         intent.orderStatus = 2;
         SafeTransferLib.safeTransferFrom(ERC20(intent.assetToBuy), msg.sender, address(this), amount);
     }
@@ -95,7 +93,7 @@ contract Mock13 {
         AgentGeneratedIntent storage intent = AgentGeneratedIntentList[orderIndex];
         require(intent.orderStatus == 1, "Invalid order status");
         require(intent.intentType == 0, "Invalid intent type");
-        
+
         intent.orderStatus = 2;
         SafeTransferLib.safeTransferFrom(ERC20(intent.assetToBuy), msg.sender, address(this), amount);
     }
@@ -104,4 +102,4 @@ contract Mock13 {
         require(newSolver != address(0), "Invalid address");
         AGISolverAddress = newSolver;
     }
-} 
+}
