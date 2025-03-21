@@ -17,7 +17,7 @@ The AGI Solver system consists of two main components:
 
 ## Smart Contract Architecture
 
-The `mock13/` folder contains the onchain component of the AGI Solver system:
+The `contracts/` folder contains the onchain component of the AGI Solver system:
 
 ### Key Contracts
 
@@ -75,7 +75,7 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 
 ### Prerequisites
 
-- Node.js
+- pnpm
 - Foundry
 - TypeScript
 
@@ -84,7 +84,7 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm i
    ```
 3. Set up environment variables:
    ```bash
