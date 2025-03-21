@@ -11,9 +11,13 @@ import path from 'path';
 import fs from 'fs';
 
 export class AGISolver {
-	public readonly SVF_TOKEN: string = "SVF_TOKEN_ADDRESS"; // Replace with actual address
+	public readonly SVF_TOKEN: string = 'SVF_TOKEN_ADDRESS'; // Replace with actual address
 	private readonly COOLDOWN_PERIOD: number = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-	private readonly STATE_FILE_PATH: string = path.join(process.cwd(), 'data', 'agi-solver-state.json');
+	private readonly STATE_FILE_PATH: string = path.join(
+		process.cwd(),
+		'data',
+		'agi-solver-state.json'
+	);
 
 	private currentState: IState;
 	private lastOrderIndex: number;
@@ -27,11 +31,7 @@ export class AGISolver {
 	private queue: PQueue;
 	private isProcessing: boolean = false;
 
-	constructor(
-		contractInstance: IMock13,
-		provider: ethers.JsonRpcProvider,
-		privateKey: string
-	) {
+	constructor(contractInstance: IMock13, provider: ethers.JsonRpcProvider, privateKey: string) {
 		this.contract = contractInstance;
 		this.provider = provider;
 		this.wallet = new ethers.Wallet(privateKey, provider);
@@ -128,10 +128,11 @@ export class AGISolver {
 					assetToBuy: { address: agi.assetToBuy, balance: 0 },
 					amount: agi.amountToSell,
 					intentType: agi.intentType,
-					orderStatus: agi.orderStatus
+					orderStatus: agi.orderStatus,
 				};
 
-				if (agi.intentType === 0) { // Trade intent
+				if (agi.intentType === 0) {
+					// Trade intent
 					if (agi.assetToSell === this.SVF_TOKEN) {
 						await this.transitionToBuyAsset(order);
 					} else {
@@ -211,7 +212,7 @@ export class AGISolver {
 	public async transitionToSellAsset(order: Order): Promise<boolean> {
 		const lastSell = this.lastSellTimestamp.get(order.assetToSell.address) || 0;
 		if (Date.now() < lastSell + this.COOLDOWN_PERIOD) {
-			throw new Error("Cooldown period not elapsed");
+			throw new Error('Cooldown period not elapsed');
 		}
 
 		await this.transitionToState(State.SELL_ASSET);
@@ -260,11 +261,11 @@ export class AGISolver {
 	// LiFi integration methods (to be implemented)
 	private async getQuote(fromToken: string, toToken: string, amount: string): Promise<any> {
 		// TODO: Implement LiFi quote fetching
-		throw new Error("Not implemented");
+		throw new Error('Not implemented');
 	}
 
 	private async executeTrade(quote: any): Promise<any> {
 		// TODO: Implement LiFi trade execution
-		throw new Error("Not implemented");
+		throw new Error('Not implemented');
 	}
-} 
+}

@@ -15,12 +15,12 @@ export interface Order {
 }
 
 export interface AgentGeneratedIntent {
-	intentType: number;      // 0 for trade, 1 for others
-	assetToSell: string;    // address of asset to sell
-	amountToSell: number;   // amount of asset to sell
-	assetToBuy: string;     // address of asset to buy
-	orderIndex: number;     // index in array
-	orderStatus: number;    // 0: pending dispense, 1: dispensed pending deposit, 2: completed
+	intentType: number; // 0 for trade, 1 for others
+	assetToSell: string; // address of asset to sell
+	amountToSell: number; // amount of asset to sell
+	assetToBuy: string; // address of asset to buy
+	orderIndex: number; // index in array
+	orderStatus: number; // 0: pending dispense, 1: dispensed pending deposit, 2: completed
 }
 
 export interface IMock13 {
@@ -63,9 +63,9 @@ export interface LiFiTrade {
 }
 
 export enum State {
-	IDLE = "IDLE",
-	BUY_ASSET = "BUY_ASSET",
-	SELL_ASSET = "SELL_ASSET",
-	LOG_ERROR = "LOG_ERROR",
-	HANDLE_FATAL_ERROR = "HANDLE_FATAL_ERROR"
-} 
+	IDLE = 'IDLE',
+	BUY_ASSET = 'BUY_ASSET',
+	SELL_ASSET = 'SELL_ASSET',
+	LOG_ERROR = 'LOG_ERROR',
+	HANDLE_FATAL_ERROR = 'HANDLE_FATAL_ERROR',
+}

@@ -42,7 +42,7 @@ class MockContract {
 			amountToSell,
 			assetToBuy,
 			orderIndex,
-			orderStatus: 0
+			orderStatus: 0,
 		});
 		this.emit('AGIPublished', orderIndex);
 	}
@@ -76,7 +76,7 @@ class MockContract {
 	}
 
 	filters = {
-		AGIPublished: () => ({})
+		AGIPublished: () => ({}),
 	};
 
 	async queryFilter(filter: any, fromBlock: number, toBlock: number): Promise<Array<any>> {
