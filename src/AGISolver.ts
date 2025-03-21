@@ -11,7 +11,7 @@ import path from 'path';
 import fs from 'fs';
 
 export class AGISolver {
-	public readonly SVF_TOKEN: string = 'SVF_TOKEN_ADDRESS'; // Replace with actual address
+	public readonly SVF_TOKEN: `0x${string}` = '0x011228A36559f2029982bB75947BD3CAc2Eb9fF9' as const; // SVF token on Base Sepolia
 	private readonly COOLDOWN_PERIOD: number = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 	private readonly STATE_FILE_PATH: string = path.join(
 		process.cwd(),
@@ -256,6 +256,15 @@ export class AGISolver {
 
 	public getLastOrderIndex(): number {
 		return this.lastOrderIndex;
+	}
+
+	public getPrivateKey(): `0x${string}` {
+		return this.wallet.privateKey as `0x${string}`;
+	}
+
+	public getContractAddress(): `0x${string}` {
+		// For testing, using the deployed contract address from Base Sepolia
+		return '0x538Dd1dB653bbF7376CF8C57C6bF68805Cf01166' as const;
 	}
 
 	// LiFi integration methods (to be implemented)

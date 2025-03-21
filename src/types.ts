@@ -1,7 +1,7 @@
 // Types and interfaces shared across the state machine
 
 export interface Asset {
-	address: string;
+	address: `0x${string}`;
 	balance: number;
 }
 
@@ -16,9 +16,9 @@ export interface Order {
 
 export interface AgentGeneratedIntent {
 	intentType: number; // 0 for trade, 1 for others
-	assetToSell: string; // address of asset to sell
+	assetToSell: `0x${string}`; // address of asset to sell
 	amountToSell: number; // amount of asset to sell
-	assetToBuy: string; // address of asset to buy
+	assetToBuy: `0x${string}`; // address of asset to buy
 	orderIndex: number; // index in array
 	orderStatus: number; // 0: pending dispense, 1: dispensed pending deposit, 2: completed
 }
@@ -28,15 +28,15 @@ export interface IMock13 {
 	withdrawAsset(amount: number, orderIndex: number): Promise<void>;
 	depositSVF(amount: number, orderIndex: number): Promise<void>;
 	depositAsset(amount: number, orderIndex: number): Promise<void>;
-	isTokenWhitelisted(token: string): Promise<boolean>;
+	isTokenWhitelisted(token: `0x${string}`): Promise<boolean>;
 	publishAGI(
 		intentType: number,
-		assetToSell: string,
+		assetToSell: `0x${string}`,
 		amountToSell: number,
-		assetToBuy: string
+		assetToBuy: `0x${string}`
 	): Promise<void>;
 	viewAGI(orderIndex: number): Promise<AgentGeneratedIntent>;
-	getCurrentSolver(): Promise<string>;
+	getCurrentSolver(): Promise<`0x${string}`>;
 	// Event handling methods
 	on(eventName: string, listener: (...args: any[]) => void): void;
 	filters: {
@@ -47,12 +47,11 @@ export interface IMock13 {
 
 // LiFi integration types
 export interface LiFiQuote {
-	route: any; // Replace with actual LiFi route type
-	estimate: {
-		toAmount: string;
-		fromAmount: string;
-		gasCosts: string;
-	};
+	fromToken: `0x${string}`;
+	toToken: `0x${string}`;
+	fromAmount: bigint;
+	toAmount: bigint;
+	route: any;
 }
 
 export interface LiFiTrade {
