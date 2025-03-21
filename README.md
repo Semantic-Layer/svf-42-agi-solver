@@ -7,6 +7,7 @@ AGI Solver is a backend system written in TypeScript designed to reliably fulfil
 The AGI Solver system consists of two main components:
 
 1. **TypeScript Backend**: Handles the complex logic of executing onchain interactions reliably, managing:
+
    - Transaction execution and retry logic
 
 2. **Smart Contract System** (`mock13/`): Provides the onchain infrastructure for:
@@ -16,14 +17,17 @@ The AGI Solver system consists of two main components:
 
 ## Smart Contract Architecture
 
-The `mock13/` folder contains the onchain component of the AGI Solver system:
+The `contracts/` folder contains the onchain component of the AGI Solver system:
 
 ### Key Contracts
+
 - `Mock13.sol`: The main contract serving as a smart contract wallet for agents
 - `TokenA.sol` & `TokenB.sol`: Test tokens for demonstrating trading functionality
 
 ### Key Features
+
 1. **Intent Publication**
+
    ```solidity
    function publishAGI(
        uint8 intentType,
@@ -32,6 +36,7 @@ The `mock13/` folder contains the onchain component of the AGI Solver system:
        address assetToBuy
    )
    ```
+
    Agents can publish their trading intents through this function.
 
 2. **Asset Management**
@@ -40,6 +45,7 @@ The `mock13/` folder contains the onchain component of the AGI Solver system:
    - Manages trade execution and asset transfers
 
 ### Deployed Contracts (Base Sepolia)
+
 - Mock13: `0x538Dd1dB653bbF7376CF8C57C6bF68805Cf01166`
 - TokenA: `0x011228A36559f2029982bB75947BD3CAc2Eb9fF9`
 - TokenB: `0x0B44519951121D60b3241272ADeBA7a944B63761`
@@ -56,6 +62,7 @@ AGI Solver is designed to be integrated into the Semantic Layer ecosystem and wi
 ## Purpose
 
 The project addresses several key challenges in onchain AI agent interactions:
+
 - Complex transaction management
 - Failed transaction handling
 - Optimal execution strategies
@@ -67,15 +74,17 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 ## Development
 
 ### Prerequisites
-- Node.js
+
+- pnpm
 - Foundry
 - TypeScript
 
 ### Setup
+
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm i
    ```
 3. Set up environment variables:
    ```bash
@@ -83,6 +92,7 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
    ```
 
 ### Testing
+
 ```bash
 # Smart Contract Tests
 cd mock13
