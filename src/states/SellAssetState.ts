@@ -1,18 +1,16 @@
 import { Order, State } from '../types';
 import { BaseState } from './BaseState';
-import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
+import { Mock13ABI } from '../utils/contractLoader';
 
 export class SellAssetState extends BaseState {
 	private retryCount: number = 0;
 	private readonly MAX_RETRIES: number = 20;
 	private readonly RETRY_DELAY: number = 50000; // 50 seconds
 
-	private readonly abi = parseAbi([
-		'function withdrawAsset(uint256 amount, uint256 orderIndex) external',
-		'function depositSVF(uint256 amount, uint256 orderIndex) external',
-	]);
+	private readonly abi = Mock13ABI;
 
 	// Mock LiFi Router address on Base Sepolia
 	private readonly MOCK_LIFI_ROUTER = '0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae' as const;
