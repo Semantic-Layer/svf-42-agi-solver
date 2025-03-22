@@ -59,7 +59,7 @@ export class AGIQueueManager {
 				logger.process(`Processing AGI ${agiId}: Withdrawing asset`);
 				// State 0 -> 1: Withdraw asset
 				await this.withdrawAsset(agiId);
-				logger.success(`Successfully withdrew asset for AGI ${agiId}`);
+				logger.success(`Successfully process: withdrew asset for AGI ${agiId}`);
 			} else if (agi.orderStatus === 1) {
 				// State 1 -> 2: Check if we already have swap result
 				const swapResult = this.swapResults.get(agiId);
@@ -98,7 +98,7 @@ export class AGIQueueManager {
 				chain: null,
 				account: null,
 			});
-			logger.success(`Successfully withdrew asset for AGI ${orderIndex}`);
+			logger.success(`txn success: withdrew asset for AGI ${orderIndex}`);
 		} catch (error) {
 			logger.error(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
@@ -116,7 +116,7 @@ export class AGIQueueManager {
 				chain: null,
 				account: null,
 			});
-			logger.success(`Successfully deposited asset for AGI ${orderIndex}`);
+			logger.success(`txn success: deposited asset for AGI ${orderIndex}`);
 			// If deposit succeeds, remove the swap result
 			this.swapResults.delete(orderIndex);
 		} catch (error) {
