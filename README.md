@@ -82,25 +82,35 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 ### Setup
 
 1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pnpm i
-   ```
-3. Set up environment variables:
+2. Set up environment variables:
+
    ```bash
    cp .env.example .env
    ```
 
-### Testing
+   ```bash
+   cd contracts
+   cp .env.example .env
+   ```
 
-```bash
-# Smart Contract Tests
-cd mock13
-forge test
+3. Deploy contracts
+   under root directory
 
-# Backend Tests
-npm test
-```
+   ```
+   make deploy
+   ```
+
+4. Start solver
+   ```
+   make start
+   ```
+5. Publish an agi
+
+   ```bash
+   #e.g.
+   make sellTokenA
+   
+   ```
 
 ## Contributing
 
