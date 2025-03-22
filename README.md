@@ -83,6 +83,7 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 
 1. Clone the repository
 2. Set up environment variables:
+
    ```bash
    cp .env.example .env
    ```
@@ -94,6 +95,7 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
 
 3. Deploy contracts
    under root directory
+
    ```
    make deploy
    ```
@@ -103,7 +105,11 @@ By separating the execution layer (AGI Solver) from the reasoning layer (AI agen
    make start
    ```
 5. Publish an agi
-   ```
+
+   ```bash
+   #e.g.
+   make sellTokenA
+   
    ```
 
 ## Contributing

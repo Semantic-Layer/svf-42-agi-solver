@@ -22,6 +22,7 @@ contract DeployScript is Script {
 
     DeploymentData public deploymentData; // State variable to hold the struct
     // misc
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -48,7 +49,7 @@ contract DeployScript is Script {
         console.log("Mock13 deployed to:", address(mock13));
 
         // save deployment data to json file
-        deploymentData = DeploymentData(address(mock13), address(tokenA) ,address(tokenB),deployer, deployer);
+        deploymentData = DeploymentData(address(mock13), address(tokenA), address(tokenB), deployer, deployer);
         writeDeploymentJson(deploymentData);
 
         vm.stopBroadcast();
@@ -82,7 +83,6 @@ contract DeployScript is Script {
             _generateConstructorArgsJson(data),
             '},"addresses":',
             _generateContractsJson(data),
-
             "}"
         );
     }
@@ -94,6 +94,14 @@ contract DeployScript is Script {
     }
 
     function _generateContractsJson(DeploymentData memory data) private pure returns (string memory) {
-        return string.concat('{"agi":"', data.agiContract.toHexString(), '","tokenA":"', data.tokenA.toHexString(), '","tokenB":"', data.tokenB.toHexString(), '"}');
+        return string.concat(
+            '{"agi":"',
+            data.agiContract.toHexString(),
+            '","tokenA":"',
+            data.tokenA.toHexString(),
+            '","tokenB":"',
+            data.tokenB.toHexString(),
+            '"}'
+        );
     }
 }

@@ -1,139 +1,132 @@
-import logger from "./logger";
-import { agiContractABI, agiContractAddress, publicClientHTTP, publicClientWSS } from "./clients";
-import { agiQueueManager } from "./AGIQueueManager";
-import { Hex } from "viem";
+import logger from './logger';
+import { agiContractABI, agiContractAddress, publicClientHTTP, publicClientWSS } from './clients';
+import { agiQueueManager } from './AGIQueueManager';
+import { Hex } from 'viem';
 
 // call the contract function getProcessedAGIs
 const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
-	const processedAGIs = await publicClientHTTP.readContract({
+	const processedAGIs = (await publicClientHTTP.readContract({
 		address: agiContractAddress as Hex,
 		abi: agiContractABI,
 		functionName: 'getProcessedAGIs',
 		args: [startIndex, endIndex],
-	}) as number[];
+	})) as number[];
 	return processedAGIs;
-}
+};
 
 // get the pending AGIs
 // here pending means the any AGIs that are not finialzed yet, including those in intermediate states
-const getPendingAGIs = async (
-	processedAGIsAmount: number,
-	startId: number,
-	endId: number
-) => {
-	// Convert task IDs to indices (0-based)
-  const startIndex = startId - 1;
-  const endIndex = Math.min(endId - 1, processedAGIsAmount - 1);
+const getPendingAGIs = async (processedAGIsAmount: number, startId: number, endId: number) => {
+	// Convert task IDs to indices (0-based), ensuring we never go below 0
+	const startIndex = Math.max(0, startId - 1);
+	const endIndex = Math.min(endId - 1, processedAGIsAmount - 1);
 
 	// Get processed tasks from startIndex to endIndex
-  const processedIds = await getProcessedAGIIds(startIndex, endIndex);
+	const processedIds = await getProcessedAGIIds(startIndex, endIndex);
 
 	// Convert bigint to number for comparison
-  const processedSet = new Set(processedIds.map(id => Number(id)));
+	const processedSet = new Set(processedIds.map(id => Number(id)));
 
-  // Create array from startTaskId to endTaskId (inclusive)
-  const allTaskIds = Array.from({ length: endId - startId + 1 }, (_, i) => startId + i);
+	// Create array from startTaskId to endTaskId (inclusive)
+	const allTaskIds = Array.from({ length: endId - startId + 1 }, (_, i) => startId + i);
 
-  return allTaskIds.filter(taskId => !processedSet.has(taskId));
-}
+	return allTaskIds.filter(taskId => !processedSet.has(taskId));
+};
 
 const processPendingAGIs = async (startId: number = 1) => {
 	try {
 		if (startId < 1) {
-      startId = 1;
-    }
+			startId = 1;
+		}
 
-		const nextOrderId = await publicClientHTTP.readContract({
+		const nextOrderId = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
 			functionName: 'nextOrderId',
 			args: [],
-		}) as bigint;
+		})) as bigint;
 
-		console.log('nextOrderId', nextOrderId);
+		if (nextOrderId === 1n) {
+			logger.info('No tasks to process');
+			return;
+		}
+
 		const totalTasksAmount = nextOrderId - 1n;
 
-
-
-		const processedAGIsAmount = await publicClientHTTP.readContract({
+		const processedAGIsAmount = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
 			functionName: 'processedAGIsLength',
 			args: [],
-		}) as bigint;
+		})) as bigint;
 
 		if (totalTasksAmount === processedAGIsAmount) {
 			logger.info('TASK STATUS');
-      logger.item('All tasks have been processed');
-      return;
-    }
+			logger.item('All tasks have been processed');
+			return;
+		}
 
 		const pendingAGIsAmount = totalTasksAmount - processedAGIsAmount;
 
 		logger.separator();
-    logger.warning('BATCH TASK PROCESSING');
-    logger.item(`${pendingAGIsAmount.toString()} unprocessed agi found`);
-    logger.item(`Processing range: ${startId} to ${totalTasksAmount.toString()} +1 `);
+		logger.warning('BATCH TASK PROCESSING');
+		logger.item(`${pendingAGIsAmount.toString()} unprocessed agi found`);
+		logger.item(`Processing range: ${startId} to ${totalTasksAmount.toString()} +1 `);
 
-		const unprocessedAGIs = await getPendingAGIs(Number(processedAGIsAmount), startId, Number(totalTasksAmount));
+		const unprocessedAGIs = await getPendingAGIs(
+			Number(processedAGIsAmount),
+			startId,
+			Number(totalTasksAmount)
+		);
 
 		logger.item(`Pending AGI IDs: ${unprocessedAGIs}`);
 
 		for (const agiId of unprocessedAGIs) {
 			await agiQueueManager.processAGI(agiId);
 		}
-
-
-
-
-
-
 	} catch (error) {
-		console.error("Error processing pending AGIs", error);
+		console.error('Error processing pending AGIs', error);
 		// Don't throw, just log the error
 	}
-}
+};
 
 // start the listener to listen to agi published events
 export default async function startListener() {
 	try {
 		logger.item('Listening for events at address:');
-    logger.item(`${agiContractAddress}`);
+		logger.item(`${agiContractAddress}`);
 
 		const unwatch = publicClientWSS.watchContractEvent({
-      address: agiContractAddress as Hex,
-      eventName: 'AGIPublished',
-      abi: agiContractABI,
-      onLogs: logs => {
-        // Process events sequentially
-        logs.forEach(async log => {
-          try {
-            // @ts-ignore
-            const { orderId, intentType, assetToSell, amountToSell, assetToBuy } = log.args;
+			address: agiContractAddress as Hex,
+			eventName: 'AGIPublished',
+			abi: agiContractABI,
+			onLogs: logs => {
+				// Process events sequentially
+				logs.forEach(async log => {
+					try {
+						// @ts-ignore
+						const { orderId, intentType, assetToSell, amountToSell, assetToBuy } = log.args;
 
-            logger.separator();
-            logger.event(`NEW EVENT FOR TASK #${orderId}`);
-            logger.item(`Intent Type: ${intentType}`);
-            logger.item(`Asset to Sell: ${assetToSell}`);
-            logger.item(`Amount to Sell: ${amountToSell}`);
-            logger.item(`Asset to Buy: ${assetToBuy}`);
+						logger.separator();
+						logger.event(`NEW EVENT FOR TASK #${orderId}`);
+						logger.item(`Intent Type: ${intentType}`);
+						logger.item(`Asset to Sell: ${assetToSell}`);
+						logger.item(`Amount to Sell: ${amountToSell}`);
+						logger.item(`Asset to Buy: ${assetToBuy}`);
 
-            await agiQueueManager.processAGI(orderId);
-          } catch (error) {
-            logger.error('ERROR PROCESSING EVENT');
-            logger.item('Error processing YeetCreated event:');
-            logger.item(`${error}`);
-            // Continue with next event instead of stopping
-          }
-        });
-      },
-    });
-
+						await agiQueueManager.processAGI(orderId);
+					} catch (error) {
+						logger.error('ERROR PROCESSING EVENT');
+						logger.item('Error processing YeetCreated event:');
+						logger.item(`${error}`);
+						// Continue with next event instead of stopping
+					}
+				});
+			},
+		});
 
 		// await processPendingAGIs();
 	} catch (error) {
-		console.error("Error starting listener", error);
+		console.error('Error starting listener', error);
 	}
 }
-
-
