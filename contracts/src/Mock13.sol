@@ -43,7 +43,7 @@ contract Mock13 is Owned {
     }
 
     event AGIPublished(
-        uint256 orderIndex, uint8 intentType, address assetToSell, uint256 amountToSell, address assetToBuy
+        uint256 orderId, uint8 intentType, address assetToSell, uint256 amountToSell, address assetToBuy
     );
 
     modifier onlyAI() {
@@ -74,7 +74,7 @@ contract Mock13 is Owned {
         onlyAI
     {
         require(intentType == 0, "Only trade intents supported");
-        require(assetToSell == address(0) || assetToBuy == address(0), "Invalid asset to sell or buy");
+        require(assetToSell != address(0) || assetToBuy != address(0), "Invalid asset to sell or buy");
         require(assetToSell != assetToBuy, "Asset to sell and buy cannot be the same");
 
         uint256 orderId = nextOrderId++;
