@@ -33,17 +33,23 @@ contract Mock13 is Owned {
         ProceedsReceived
     }
 
+    // Structs
     struct AgentGeneratedIntent {
-        uint8 intentType; // 0 for trade, 1 for others
-        address assetToSell; // address of asset to sell (SVF42 or whitelisted)
-        uint256 amountToSell; // amount of asset to sell
-        address assetToBuy; // address of asset to buy (SVF42 or whitelisted)
-        uint256 orderId; // index in array
-        OrderStatus orderStatus; // 0: pending dispense, 1: dispensed pending deposit, 2: completed
+        uint8 orderType; // 0: trade, 1: others
+        uint256 orderId; // the id for the order. it's incremental and auto generated
+        address assetToSell; // address of the asset to sell, could be $SVF42 or whitelisted asset
+        uint256 amountToSell; // amount of the asset to sell (inputAmount)
+        address assetToBuy; // address of the asset to buy, could be $SVF42 or whitelisted asset
+        OrderStatus orderStatus; // Status of the order
     }
 
     event AGIPublished(
-        uint256 orderId, uint8 intentType, address assetToSell, uint256 amountToSell, address assetToBuy
+        uint256 indexed orderId,
+        address assetToSell,
+        uint256 amountToSell,
+        address assetToBuy,
+        uint8 orderType,
+        OrderStatus orderStatus
     );
 
     modifier onlyAI() {
@@ -69,18 +75,17 @@ contract Mock13 is Owned {
     }
 
     /// @notice publish a new AGI
-    function publishAGI(uint8 intentType, address assetToSell, uint256 amountToSell, address assetToBuy)
+    function publishAGI(address assetToSell, uint256 amountToSell, address assetToBuy)
         external
         onlyAI
     {
-        require(intentType == 0, "Only trade intents supported");
         require(assetToSell != address(0) || assetToBuy != address(0), "Invalid asset to sell or buy");
         require(assetToSell != assetToBuy, "Asset to sell and buy cannot be the same");
 
         uint256 orderId = nextOrderId++;
 
         AgentGeneratedIntent memory newIntent = AgentGeneratedIntent({
-            intentType: intentType,
+            orderType: 0,
             assetToSell: assetToSell,
             amountToSell: amountToSell,
             assetToBuy: assetToBuy,
@@ -89,7 +94,7 @@ contract Mock13 is Owned {
         });
 
         agis[orderId] = newIntent;
-        emit AGIPublished(orderId, intentType, assetToSell, amountToSell, assetToBuy);
+        emit AGIPublished(orderId, assetToSell, amountToSell, assetToBuy, 0, newIntent.orderStatus);
     }
 
     function viewAGI(uint256 orderId) external view returns (AgentGeneratedIntent memory) {
@@ -98,7 +103,6 @@ contract Mock13 is Owned {
 
     function withdrawAsset(uint256 orderId) external onlySolver {
         AgentGeneratedIntent storage intent = agis[orderId];
-        require(intent.intentType == 0, "Invalid intent type");
         require(intent.orderStatus == OrderStatus.PendingDispense, "Invalid order status");
         intent.orderStatus = OrderStatus.DispensedPendingProceeds;
 
@@ -109,7 +113,6 @@ contract Mock13 is Owned {
 
     function depositAsset(uint256 orderId, uint256 amount) external onlySolver {
         AgentGeneratedIntent storage intent = agis[orderId];
-        require(intent.intentType == 0, "Invalid intent type");
         require(intent.orderStatus == OrderStatus.DispensedPendingProceeds, "Invalid order status");
         intent.orderStatus = OrderStatus.ProceedsReceived;
         processedAGIs.push(orderId);

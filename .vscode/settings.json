@@ -1,5 +1,11 @@
 {
 	"eslint.validate": ["javascript", "typescript"],
 	"eslint.run": "onSave",
-	"eslint.rules.customizations": [{ "rule": "*", "severity": "warn" }]
+	"eslint.rules.customizations": [
+		{
+			"rule": "*",
+			"severity": "warn"
+		}
+	],
+	"conventionalCommits.scopes": ["contracts"]
 }
