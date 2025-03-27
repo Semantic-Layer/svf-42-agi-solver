@@ -58,7 +58,7 @@ const privateKey =
 const account = privateKeyToAccount(privateKey as Hex);
 
 // get public client based on chain id
-const getPublicClient = (wss: boolean) => {
+const getPublicClient = (wss: boolean): PublicClient => {
 	if (wss) {
 		// https://viem.sh/docs/clients/transports/websocket
 		return createPublicClient({
@@ -67,22 +67,22 @@ const getPublicClient = (wss: boolean) => {
 				keepAlive: true, // or we can set `{ interval: 1_000 },`
 				reconnect: true,
 			}),
-		});
+		}) as PublicClient;
 	} else {
 		return createPublicClient({
 			chain: anvil,
 			transport: http(rpc),
-		});
+		}) as PublicClient;
 	}
 };
 
 /// get wallet client based on chain id
-const getWalletClient = () =>
+const getWalletClient = (): WalletClient =>
 	createWalletClient({
 		account,
 		chain: anvil,
 		transport: http(rpc),
-	});
+	}) as WalletClient;
 
 export const publicClientHTTP = getPublicClient(false);
 export const publicClientWSS = getPublicClient(true);
