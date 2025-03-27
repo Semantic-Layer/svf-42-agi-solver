@@ -5,8 +5,11 @@ import {
 	publicClientHTTP,
 	publicClientWSS,
 } from './clients.ts';
-import { agiQueueManager } from './AGIQueueManager.ts';
 import { Hex } from 'viem';
+import { AGIQueueManager } from './AGIQueueManager.ts';
+
+// Create a single instance
+const agiQueueManager = new AGIQueueManager();
 
 // call the contract function getProcessedAGIs
 const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
@@ -87,7 +90,7 @@ const processPendingAGIs = async (startId = 1) => {
 		logger.item(`Pending AGI IDs: ${unprocessedAGIs}`);
 
 		for (const agiId of unprocessedAGIs) {
-			await agiQueueManager.processAGI(agiId);
+			await agiQueueManager.add(agiId);
 		}
 	} catch (error) {
 		console.error('Error processing pending AGIs', error);
@@ -110,16 +113,16 @@ export default async function startListener() {
 				logs.forEach(async log => {
 					try {
 						// @ts-ignore
-						const { orderId, intentType, assetToSell, amountToSell, assetToBuy } = log.args;
+						const { orderId, assetToSell, amountToSell, assetToBuy, orderStatus } = log.args;
 
 						logger.separator();
 						logger.event(`NEW EVENT FOR TASK #${orderId}`);
-						logger.item(`Intent Type: ${intentType}`);
 						logger.item(`Asset to Sell: ${assetToSell}`);
 						logger.item(`Amount to Sell: ${amountToSell}`);
 						logger.item(`Asset to Buy: ${assetToBuy}`);
+						logger.item(`Order Status: ${orderStatus}`);
 
-						await agiQueueManager.processAGI(orderId);
+						await agiQueueManager.add(orderId);
 					} catch (error) {
 						logger.error('ERROR PROCESSING EVENT');
 						logger.item('Error processing YeetCreated event:');
