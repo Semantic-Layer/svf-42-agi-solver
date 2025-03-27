@@ -7,9 +7,6 @@
 		"url": "git+https://github.com/Semantic-Layer/svf-agi-solver-internal.git"
 	},
 	"license": "MIT",
-	"author": {
-		"email": "101599447+zt-9@users.noreply.github.com"
-	},
 	"type": "module",
 	"main": "dist/index.js",
 	"files": [
