@@ -1,121 +1,36 @@
+<h1 align="center">AGI Solver</h1>
+
+<p align="center">svf agi solver</p>
+
+<p align="center">
+	<a href="https://github.com/Semantic-Layer/svf-agi-solver-internal/blob/main/.github/CODE_OF_CONDUCT.md" target="_blank"><img alt="🤝 Code of Conduct: Kept" src="https://img.shields.io/badge/%F0%9F%A4%9D_code_of_conduct-kept-21bb42" /></a>
+	<a href="https://codecov.io/gh/Semantic-Layer/svf-agi-solver-internal" target="_blank"><img alt="🧪 Coverage" src="https://img.shields.io/codecov/c/github/Semantic-Layer/svf-agi-solver-internal?label=%F0%9F%A7%AA%20coverage" /></a>
+	<a href="https://github.com/Semantic-Layer/svf-agi-solver-internal/blob/main/LICENSE.md" target="_blank"><img alt="📝 License: MIT" src="https://img.shields.io/badge/%F0%9F%93%9D_license-MIT-21bb42.svg"></a>
+	<a href="http://npmjs.com/package/svf-agi-solver-internal"><img alt="📦 npm version" src="https://img.shields.io/npm/v/svf-agi-solver-internal?color=21bb42&label=%F0%9F%93%A6%20npm" /></a>
+	<img alt="💪 TypeScript: Strict" src="https://img.shields.io/badge/%F0%9F%92%AA_typescript-strict-21bb42.svg" />
+</p>
+
 # AGI Solver
 
 AGI Solver is a backend system written in TypeScript designed to reliably fulfill onchain interaction requests (Agent Generated Intents) for AI agents. It serves as a critical bridge between AI agents and blockchain interactions, ensuring reliable execution of complex onchain operations.
 
-## Overview
+## Usage
 
-The AGI Solver system consists of two main components:
+```shell
+npm i svf-agi-solver-internal
+```
 
-1. **TypeScript Backend**: Handles the complex logic of executing onchain interactions reliably, managing:
+```ts
+import { greet } from 'svf-agi-solver-internal';
 
-   - Transaction execution and retry logic
-
-2. **Smart Contract System** (`mock13/`): Provides the onchain infrastructure for:
-   - Publishing agent intents
-   - Managing agent assets
-   - Serving as a smart contract wallet for agents
-
-## Smart Contract Architecture
-
-The `contracts/` folder contains the onchain component of the AGI Solver system:
-
-### Key Contracts
-
-- `Mock13.sol`: The main contract serving as a smart contract wallet for agents
-- `TokenA.sol` & `TokenB.sol`: Test tokens for demonstrating trading functionality
-
-### Key Features
-
-1. **Intent Publication**
-
-   ```solidity
-   function publishAGI(
-       uint8 intentType,
-       address assetToSell,
-       uint256 amountToSell,
-       address assetToBuy
-   )
-   ```
-
-   Agents can publish their trading intents through this function.
-
-2. **Asset Management**
-   - The contract acts as a secure wallet for agent assets
-   - Supports ERC20 token interactions
-   - Manages trade execution and asset transfers
-
-### Deployed Contracts (Base Sepolia)
-
-- Mock13: `0x538Dd1dB653bbF7376CF8C57C6bF68805Cf01166`
-- TokenA: `0x011228A36559f2029982bB75947BD3CAc2Eb9fF9`
-- TokenB: `0x0B44519951121D60b3241272ADeBA7a944B63761`
-
-## Integration with Semantic Layer
-
-AGI Solver is designed to be integrated into the Semantic Layer ecosystem and will be a key component in the upcoming Silicon Valley Fun product release. This integration allows:
-
-1. AI agents to focus on high-level decision making and reasoning
-2. AGI Solver to handle all complex onchain interactions
-3. Reliable execution of agent-generated intents
-4. Seamless interaction with DEXes and lending protocols
-
-## Purpose
-
-The project addresses several key challenges in onchain AI agent interactions:
-
-- Complex transaction management
-- Failed transaction handling
-- Optimal execution strategies
-- Gas optimization
-- RPC reliability
-
-By separating the execution layer (AGI Solver) from the reasoning layer (AI agents), we create a more robust and reliable system for onchain AI interactions.
+greet('Hello, world! 💖');
+```
 
 ## Development
 
-### Prerequisites
+See [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md), then [`.github/DEVELOPMENT.md`](./.github/DEVELOPMENT.md).
+Thanks! 💖
 
-- pnpm
-- Foundry
-- TypeScript
+<!-- You can remove this notice if you don't want it 🙂 no worries! -->
 
-### Setup
-
-1. Clone the repository
-2. Set up environment variables:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   ```bash
-   cd contracts
-   cp .env.example .env
-   ```
-
-3. Deploy contracts
-   under root directory
-
-   ```
-   make deploy
-   ```
-
-4. Start solver
-   ```
-   make start
-   ```
-5. Publish an agi
-
-   ```bash
-   #e.g.
-   make sellTokenA
-   
-   ```
-
-## Contributing
-
-We welcome contributions! Please see our contributing guidelines for more details.
-
-## License
-
-MIT
+> 💝 This package was templated with [`create-typescript-app`](https://github.com/JoshuaKGoldberg/create-typescript-app) using the [Bingo engine](https://create.bingo).

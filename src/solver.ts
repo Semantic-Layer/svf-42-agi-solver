@@ -1,6 +1,11 @@
-import logger from './logger';
-import { agiContractABI, agiContractAddress, publicClientHTTP, publicClientWSS } from './clients';
-import { agiQueueManager } from './AGIQueueManager';
+import logger from './logger.ts';
+import {
+	agiContractABI,
+	agiContractAddress,
+	publicClientHTTP,
+	publicClientWSS,
+} from './clients.ts';
+import { agiQueueManager } from './AGIQueueManager.ts';
 import { Hex } from 'viem';
 
 // call the contract function getProcessedAGIs
@@ -33,7 +38,7 @@ const getPendingAGIs = async (processedAGIsAmount: number, startId: number, endI
 	return allTaskIds.filter(taskId => !processedSet.has(taskId));
 };
 
-const processPendingAGIs = async (startId: number = 1) => {
+const processPendingAGIs = async (startId = 1) => {
 	try {
 		if (startId < 1) {
 			startId = 1;

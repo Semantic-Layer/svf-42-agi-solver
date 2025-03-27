@@ -1,37 +1,59 @@
 {
-	"name": "svf-agi-solver",
+	"name": "svf-agi-solver-internal",
 	"version": "1.0.0",
-	"description": "",
-	"main": "dist/index.js",
-	"scripts": {
-		"preinstall": "npx only-allow pnpm",
-		"start": "npx ts-node src/index.ts",
-		"build": "npx tsc",
-		"dev": "npx ts-node-dev --respawn src/index.ts",
-		"test": "echo \"Error: no test specified\" && exit 1",
-		"fmt": "prettier --write .",
-		"fmt:check": "prettier --check .",
-		"fmt:src": "prettier --write \"src/**/*.{ts,tsx}\""
-	},
+	"description": "svf agi solver",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/Semantic-Layer/svf-agi-solver.git"
+		"url": "git+https://github.com/Semantic-Layer/svf-agi-solver-internal.git"
 	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"bugs": {
-		"url": "https://github.com/Semantic-Layer/svf-agi-solver/issues"
+	"license": "MIT",
+	"author": {
+		"email": "101599447+zt-9@users.noreply.github.com"
 	},
-	"homepage": "https://github.com/Semantic-Layer/svf-agi-solver#readme",
-	"devDependencies": {
-		"@types/node": "^22.13.10",
-		"prettier": "^3.5.3",
-		"ts-node": "^10.9.2",
-		"typescript": "^5.8.2"
+	"type": "module",
+	"main": "dist/index.js",
+	"files": [
+		"LICENSE.md",
+		"README.md",
+		"dist/",
+		"package.json"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "npx ts-node-dev --respawn src/index.ts",
+		"fmt": "prettier --write .",
+		"fmt:check": "prettier --check .",
+		"fmt:src": "prettier --write \"src/**/*.{ts,tsx}\"",
+		"format": "prettier .",
+		"preinstall": "npx only-allow pnpm",
+		"lint": "eslint . --max-warnings 0",
+		"prepare": "husky",
+		"start": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' src/index.ts",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"tsc": "tsc"
+	},
+	"lint-staged": {
+		"*": "prettier --ignore-unknown --write"
 	},
 	"dependencies": {
 		"dotenv": "^16.4.7",
-		"viem": "^2.23.13"
+		"viem": "^2.23.13",
+		"winston": "^3.17.0"
+	},
+	"devDependencies": {
+		"@eslint/js": "9.22.0",
+		"@types/node": "22.13.10",
+		"eslint": "9.22.0",
+		"husky": "9.1.7",
+		"lint-staged": "15.5.0",
+		"prettier": "3.5.3",
+		"ts-node": "^10.9.2",
+		"tsup": "8.4.0",
+		"typescript": "5.8.2",
+		"typescript-eslint": "8.26.1"
+	},
+	"packageManager": "pnpm@10.4.0",
+	"engines": {
+		"node": ">=18.3.0"
 	}
 }
