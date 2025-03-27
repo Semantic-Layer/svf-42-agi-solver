@@ -62,7 +62,7 @@ export class AGIQueueManager {
 			const agi = (await publicClientHTTP.readContract({
 				address: agiContractAddress as Hex,
 				abi: agiContractABI,
-				functionName: 'getAGI',
+				functionName: 'viewAGI',
 				args: [agiId],
 			})) as AgentGeneratedIntent;
 
