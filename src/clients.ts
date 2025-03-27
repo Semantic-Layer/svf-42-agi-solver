@@ -3,9 +3,9 @@ import {
 	webSocket,
 	http,
 	createWalletClient,
-	PublicClient,
-	WalletClient,
-	Hex,
+	type PublicClient,
+	type WalletClient,
+	type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { anvil } from 'viem/chains';

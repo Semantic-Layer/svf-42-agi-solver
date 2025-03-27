@@ -5,7 +5,7 @@ import {
 	publicClientHTTP,
 	publicClientWSS,
 } from './clients.ts';
-import { Hex } from 'viem';
+import { type Hex } from 'viem';
 import { AGIQueueManager } from './AGIQueueManager.ts';
 
 // Create a single instance

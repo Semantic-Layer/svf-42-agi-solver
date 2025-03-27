@@ -1,7 +1,7 @@
 import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
-import { Hex } from 'viem';
+import { type Hex } from 'viem';
 import { mockSwap } from './mockSwap.ts';
-import { AgentGeneratedIntent } from './types.ts';
+import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 
 interface SwapResult {

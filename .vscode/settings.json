@@ -7,5 +7,5 @@
 			"severity": "warn"
 		}
 	],
-	"conventionalCommits.scopes": ["contracts"]
+	"conventionalCommits.scopes": ["contracts", "agiQueue"]
 }
