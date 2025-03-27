@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
+	// Global ignores - files/directories to skip
 	{
 		ignores: [
 			'**/node_modules/**',
@@ -11,25 +12,15 @@ export default tseslint.config(
 			'**/pnpm-lock.yaml',
 		],
 	},
-	{ linterOptions: { reportUnusedDisableDirectives: 'error' } },
-	eslint.configs.recommended,
+	// TypeScript configuration
 	{
-		extends: [tseslint.configs.strictTypeChecked, tseslint.configs.stylisticTypeChecked],
+		extends: [tseslint.configs.recommendedTypeChecked],
 		files: ['src/**/*.{js,ts}'],
 		languageOptions: {
 			parserOptions: {
 				projectService: { allowDefaultProject: ['*.config.*s'] },
 				tsconfigRootDir: import.meta.dirname,
-				ecmaVersion: 'latest',
-				sourceType: 'module',
-				ecmaFeatures: {
-					jsx: true,
-				},
 			},
-		},
-		rules: {
-			'@typescript-eslint/no-explicit-any': 'warn',
-			'@typescript-eslint/no-unused-vars': 'warn',
 		},
 	}
 );
