@@ -1,3 +1,53 @@
+/**
+ * AGI Queue Manager
+ *
+ * Manages the queue of AGIs (Agent Generated Intents) for processing.
+ *
+ * Order Processing Flow:
+ * 1. Queue Management:
+ *    - Items are added to queue via add(agiId)
+ *    - When processing starts, items are moved to end of queue before processing
+ *    - Items are only removed from queue when fully completed (status 2)
+ *
+ * 2. Status Flow:
+ *    a. Initial State (0 - PendingDispense):
+ *       - Withdraw asset from contract
+ *       - Contract status becomes 1
+ *
+ *    b. After Withdraw (1 - DispensedPendingProceeds):
+ *       - Set internal status to 4 (SwapInitiated)
+ *       - Begin swap operation
+ *
+ *    c. Swap Initiated (3 - SwapInitiated):
+ *       - Perform swap operation
+ *       - Set internal status to 3 (SwapCompleted) when swap is done
+ *
+ *    d. After Swap (4 - SwapCompleted):
+ *       - Deposit swapped assets back to contract
+ *       - Set internal status to 2 (ProceedsReceived)
+ *
+ *    e. Final State (2 - ProceedsReceived):
+ *       - Clean up internal state
+ *       - Remove from queue
+ *
+ * 3. Status Selection Logic:
+ *    - Use contract status as primary source of truth
+ *    - Only use internal SwapCompleted status when:
+ *      * Contract status is 1 (DispensedPendingProceeds)
+ *      * AND we have an internal status (not undefined)
+ *
+ * 4. Transaction Handling:
+ *    - Wait for transaction confirmation before proceeding
+ *    - Handle transaction failures gracefully
+ *    - Keep items in queue until fully processed
+ *
+ * 5. Queue Processing:
+ *    - Process one item at a time
+ *    - Move items to end of queue before processing
+ *    - Only remove items when fully completed
+ *    - Maintain FIFO order while allowing other items to be processed
+ */
+
 import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
 import { mockSwap } from './mockSwap.ts';
@@ -16,31 +66,28 @@ interface SwapResult {
 
 /**
  * Extended order status that combines contract states with internal processing states
- * The contract only tracks states 0,1,2, while we add state 3 to track the swap completion
+ * The contract only tracks states 0,1,2, while we add states 3,4 to track the swap completion
  */
 const ExtendedOrderStatus = {
 	PendingDispense: 0, // Contract: Initial state, waiting to withdraw asset
 	DispensedPendingProceeds: 1, // Contract: Asset withdrawn, ready for swap
-	SwapCompleted: 3, // Internal: Swap done, ready to deposit proceeds
+	SwapInitiated: 3, // Internal: Swap operation started
+	SwapCompleted: 4, // Internal: Swap done, ready to deposit proceeds
 	ProceedsReceived: 2, // Contract: Final state, all operations completed
 } as const;
 
 type ExtendedOrderStatus = (typeof ExtendedOrderStatus)[keyof typeof ExtendedOrderStatus];
 
 /**
- * Manages the queue of AGIs (Agent Generated Intents) for processing.
- * Implements a FIFO (First In First Out) queue with special handling for incomplete items:
- * - When an item is processed, it's moved to the end of the queue
- * - If processing completes successfully (status 2), the item is removed
- * - If processing is incomplete or fails, the item stays at the end, allowing other items to be processed first
- * - This ensures fair processing while maintaining order
- *
- * The queue is designed to handle transaction latency:
- * - Items are moved to the end of queue before processing
- * - This allows other items to be processed while waiting for transactions to land on-chain
- * - Only removes items when their completion (status 2) is confirmed on-chain
- * - Prevents blocking on transaction confirmations while maintaining FIFO order
+ * Helper function to get the status name from a numeric status
+ * @param status - The numeric status value
+ * @returns The name of the status or 'Unknown' if not found
  */
+function getStatusName(status: number): string {
+	const statusEntry = Object.entries(ExtendedOrderStatus).find(([_, value]) => value === status);
+	return statusEntry ? statusEntry[0] : 'Unknown';
+}
+
 export class AGIQueueManager {
 	/** Maps AGI IDs to their swap results */
 	private swapResults: Map<number, SwapResult>;
@@ -119,17 +166,7 @@ export class AGIQueueManager {
 	/**
 	 * Processes a single AGI through its lifecycle.
 	 * Status transitions:
-	 * 0 (PendingDispense) -> 1 (DispensedPendingProceeds) -> 3 (SwapCompleted) -> 2 (ProceedsReceived)
-	 *
-	 * Queue handling:
-	 * - If AGI completes (status 2), it's removed from queue
-	 * - If AGI is incomplete or fails, it remains at queue end (moved there in startProcessing)
-	 * - This allows other items to be processed while maintaining FIFO order
-	 *
-	 * Transaction handling:
-	 * - Only removes items when their completion (status 2) is confirmed on-chain
-	 * - This ensures we don't prematurely remove items while transactions are pending
-	 * - Other items can be processed while waiting for transaction confirmations
+	 * 0 (PendingDispense) -> 1 (DispensedPendingProceeds) -> 3 (SwapInitiated) -> 4 (SwapCompleted) -> 2 (ProceedsReceived)
 	 */
 	private async processAGI(agiId: number) {
 		logger.info(`Processing AGI ${agiId}`);
@@ -143,13 +180,26 @@ export class AGIQueueManager {
 				args: [agiId],
 			})) as AgentGeneratedIntent;
 
-			// If contract shows finished (2), use that. Otherwise use our internal status if it exists
-			const currentStatus =
-				agi.orderStatus === ExtendedOrderStatus.ProceedsReceived
-					? ExtendedOrderStatus.ProceedsReceived
-					: this.orderStatus.get(agiId) || agi.orderStatus;
-			logger.item(`Contract Status: ${agi.orderStatus}`);
-			logger.item(`Extended Status: ${currentStatus}`);
+			// Status selection logic:
+			// 1. Use contract status as primary source of truth
+			// 2. Only use internal SwapCompleted status when:
+			//    - Contract status is 1 (DispensedPendingProceeds)
+			//    - AND we have an internal status (not undefined)
+			let currentStatus: ExtendedOrderStatus;
+
+			if (
+				agi.orderStatus === ExtendedOrderStatus.DispensedPendingProceeds &&
+				this.orderStatus.get(agiId)
+			) {
+				// Contract is ready for deposit (1) and we have an internal status
+				currentStatus = this.orderStatus.get(agiId)!;
+			} else {
+				// Use contract's status for everything else
+				currentStatus = agi.orderStatus as ExtendedOrderStatus;
+			}
+
+			logger.item(`Contract Status: ${agi.orderStatus} (${getStatusName(agi.orderStatus)})`);
+			logger.item(`Extended Status: ${currentStatus} (${getStatusName(currentStatus)})`);
 
 			// Process based on current status
 			switch (currentStatus) {
@@ -158,10 +208,16 @@ export class AGIQueueManager {
 					await this.withdrawAsset(agiId);
 					break;
 				case ExtendedOrderStatus.DispensedPendingProceeds:
+					// Set status to SwapInitiated and begin swap
+					this.orderStatus.set(agiId, ExtendedOrderStatus.SwapInitiated);
+					logger.info(`AGI ${agiId} swap initiated`);
+					break;
+				case ExtendedOrderStatus.SwapInitiated:
 					// Perform swap and store result
 					const amountToBuy = await mockSwap(agi.assetToSell, agi.amountToSell, agi.assetToBuy);
 					this.swapResults.set(agiId, { agiId, amountToBuy });
 					this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+					logger.info(`AGI ${agiId} swap completed`);
 					break;
 				case ExtendedOrderStatus.SwapCompleted:
 					// Deposit swapped assets back to contract
@@ -194,7 +250,6 @@ export class AGIQueueManager {
 	 * @param orderIndex - The ID of the AGI to withdraw for
 	 */
 	private async withdrawAsset(orderIndex: number) {
-		console.log('account to withdraw', walletClient.account.address);
 		try {
 			logger.process(`Withdrawing asset for AGI ${orderIndex}`);
 			const { request } = await publicClientHTTP.simulateContract({
