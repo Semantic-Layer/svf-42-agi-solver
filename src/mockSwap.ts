@@ -1,3 +1,5 @@
+import logger from './logger.ts';
+
 /**
  * Simulates a swap operation with a delay to simulate transaction latency
  * @param assetToSell - The asset to sell
@@ -12,7 +14,11 @@ export async function mockSwap(
 ): Promise<number> {
 	// Simulate transaction latency (2 seconds)
 	await new Promise(resolve => setTimeout(resolve, 2000));
+	logger.info('mockSwap: started');
+	logger.item(`assetToSell: ${assetToSell}`);
+	logger.item(`amountToSell: ${amountToSell}`);
+	logger.item(`assetToBuy: ${assetToBuy}`);
 
-	// Simulate a simple 1:1 swap
+	logger.success('mockSwap: ended');
 	return amountToSell;
 }

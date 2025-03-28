@@ -3,7 +3,6 @@ import {
 	webSocket,
 	http,
 	createWalletClient,
-	type PublicClient,
 	type WalletClient,
 	type Hex,
 } from 'viem';

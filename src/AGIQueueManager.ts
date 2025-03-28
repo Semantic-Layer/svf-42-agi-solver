@@ -84,7 +84,7 @@ type ExtendedOrderStatus = (typeof ExtendedOrderStatus)[keyof typeof ExtendedOrd
  * @returns The name of the status or 'Unknown' if not found
  */
 function getStatusName(status: number): string {
-	const statusEntry = Object.entries(ExtendedOrderStatus).find(([_, value]) => value === status);
+	const statusEntry = Object.entries(ExtendedOrderStatus).find(([, value]) => value === status);
 	return statusEntry ? statusEntry[0] : 'Unknown';
 }
 
@@ -229,7 +229,7 @@ export class AGIQueueManager {
 	 * Handles the PendingDispense state (0)
 	 * - Withdraws asset from contract
 	 */
-	private async handlePendingDispense(agiId: number, agi: AgentGeneratedIntent) {
+	private async handlePendingDispense(agiId: number) {
 		await this.withdrawAsset(agiId);
 	}
 

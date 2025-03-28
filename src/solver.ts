@@ -146,7 +146,8 @@ export default async function startListener() {
 		logger.item('Listening for events at address:');
 		logger.item(`${agiContractAddress}`);
 
-		const unwatch = publicClientWSS.watchContractEvent({
+		// Store unwatch function for cleanup if needed
+		publicClientWSS.watchContractEvent({
 			address: agiContractAddress as Hex,
 			eventName: 'AGIPublished',
 			abi: agiContractABI,
@@ -154,7 +155,7 @@ export default async function startListener() {
 				// Process events sequentially
 				logs.forEach(async log => {
 					try {
-						// @ts-ignore
+						// @ts-expect-error - log.args is dynamically typed
 						const { orderId, assetToSell, amountToSell, assetToBuy, orderStatus } = log.args;
 
 						logger.separator();
