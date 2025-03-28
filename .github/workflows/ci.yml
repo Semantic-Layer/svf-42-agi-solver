@@ -5,13 +5,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
-      - run: pnpm build
       - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install Dependencies
         run: |
-          curl -L https://foundry.paradigm.xyz | bash
-          $HOME/.foundry/bin/foundryup
-      - name: Build Contracts
-        run: cd contracts && forge build
+          forge install
+          forge update
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge clean
+          forge build
+        id: build
+      - run: pnpm build
       - run: node dist/index.js
   lint:
     name: Lint
