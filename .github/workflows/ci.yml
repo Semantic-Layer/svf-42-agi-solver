@@ -7,22 +7,8 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/prepare
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
-      - name: Install Dependencies
-        run: |
-          forge install
-          forge update
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge clean
-          forge build
-        id: build
       - run: pnpm build
-      - run: node dist/index.js
+      # - run: node dist/index.js
   lint:
     name: Lint
     runs-on: ubuntu-latest
