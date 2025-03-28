@@ -204,7 +204,7 @@ export class AGIQueueManager {
 			// Process based on current status
 			switch (currentStatus) {
 				case ExtendedOrderStatus.PendingDispense:
-					await this.handlePendingDispense(agiId, agi);
+					await this.handlePendingDispense(agiId);
 					break;
 				case ExtendedOrderStatus.DispensedPendingProceeds:
 					await this.handleDispensedPendingProceeds(agiId);
