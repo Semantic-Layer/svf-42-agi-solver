@@ -12,14 +12,33 @@ import { AGIQueueManager } from './AGIQueueManager.ts';
 const agiQueueManager = new AGIQueueManager();
 
 // call the contract function getProcessedAGIs
+const BATCH_SIZE = 50;
 const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
-	const processedAGIs = (await publicClientHTTP.readContract({
-		address: agiContractAddress as Hex,
-		abi: agiContractABI,
-		functionName: 'getProcessedAGIs',
-		args: [startIndex, endIndex],
-	})) as number[];
-	return processedAGIs;
+	const result: number[] = [];
+	const totalBatches = Math.ceil((endIndex - startIndex + 1) / BATCH_SIZE);
+	logger.info(`BATCH PROCESSING: Retrieving processed tasks in ${totalBatches} batches`);
+
+	for (let i = startIndex; i <= endIndex; i += BATCH_SIZE) {
+		const batchEndIndex = Math.min(i + BATCH_SIZE - 1, endIndex);
+		const currentBatch = Math.floor((i - startIndex) / BATCH_SIZE) + 1;
+
+		logger.process(
+			`BATCH ${currentBatch}/${totalBatches}: Getting tasks ${i} to ${batchEndIndex + 1}`
+		);
+
+		const batchResult = (await publicClientHTTP.readContract({
+			address: agiContractAddress as Hex,
+			abi: agiContractABI,
+			functionName: 'getProcessedAGIs',
+			args: [startIndex, endIndex],
+		})) as number[];
+
+		logger.item(`Retrieved ${batchResult.length} processed tasks in batch ${currentBatch}`);
+		result.push(...batchResult);
+	}
+
+	logger.success(`BATCH PROCESSING COMPLETE: Retrieved ${result.length} processed tasks in total`);
+	return result;
 };
 
 // get the pending AGIs
@@ -43,6 +62,8 @@ const getPendingAGIs = async (processedAGIsAmount: number, startId: number, endI
 
 const processPendingAGIs = async (startId = 1) => {
 	try {
+		logger.separator();
+		logger.info(`[processPendingAGIs] TASK CHECK: Starting from task ID 1`);
 		if (startId < 1) {
 			startId = 1;
 		}
@@ -74,7 +95,13 @@ const processPendingAGIs = async (startId = 1) => {
 			return;
 		}
 
+		// Log summary
+		logger.info('TASK SUMMARY');
+		logger.item(`Total tasks in system: ${totalTasksAmount.toString()}`);
+		logger.item(`Total processed agis: ${processedAGIsAmount.toString()}`);
+
 		const pendingAGIsAmount = totalTasksAmount - processedAGIsAmount;
+		logger.warning(`${pendingAGIsAmount.toString()} unprocessed agis found in the system`);
 
 		logger.separator();
 		logger.warning('BATCH TASK PROCESSING');
@@ -87,11 +114,23 @@ const processPendingAGIs = async (startId = 1) => {
 			Number(totalTasksAmount)
 		);
 
-		logger.item(`Pending AGI IDs: ${unprocessedAGIs}`);
+		if (unprocessedAGIs.length === 0) {
+			logger.success(`No unprocessed tasks found in range 1-${totalTasksAmount.toString()}`);
+			return;
+		}
+
+		// Process pending  agis
+		logger.warning(
+			`Found ${unprocessedAGIs.length} unprocessed tasks: ${unprocessedAGIs.join(', ')}`
+		);
+		unprocessedAGIs.sort((a, b) => a - b); // Process in order
 
 		for (const agiId of unprocessedAGIs) {
+			logger.info(`adding task #${agiId} to the queue`);
 			await agiQueueManager.add(agiId);
 		}
+
+		logger.success(`All ${unprocessedAGIs.length} tasks added to the queue`);
 	} catch (error) {
 		console.error('Error processing pending AGIs', error);
 		// Don't throw, just log the error
@@ -133,7 +172,7 @@ export default async function startListener() {
 			},
 		});
 
-		// await processPendingAGIs();
+		await processPendingAGIs();
 	} catch (error) {
 		console.error('Error starting listener', error);
 	}
