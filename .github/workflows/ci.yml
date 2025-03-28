@@ -6,6 +6,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
       - run: pnpm build
+      - name: Install Foundry
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          $HOME/.foundry/bin/foundryup
+      - name: Build Contracts
+        run: cd contracts && forge build
       - run: node dist/index.js
   lint:
     name: Lint
