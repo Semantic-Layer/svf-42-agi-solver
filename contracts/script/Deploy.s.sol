@@ -26,6 +26,7 @@ contract DeployScript is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
+        console.log("Deployer:", deployer);
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy TokenA and TokenB
@@ -36,8 +37,10 @@ contract DeployScript is Script {
         Mock13 mock13 = new Mock13(deployer, deployer);
 
         // Mint some tokens for testing
-        tokenA.mint(address(mock13), 1000 * 1e18);
-        tokenB.mint(address(mock13), 1000 * 1e18);
+        tokenA.mint(address(mock13), 1000000 * 1e18);
+        tokenB.mint(address(mock13), 1000000 * 1e18);
+        tokenA.mint(deployer, 1000000 * 1e18);
+        tokenB.mint(deployer, 1000000 * 1e18);
 
         // Set token allowances
         tokenA.approve(address(mock13), type(uint256).max);

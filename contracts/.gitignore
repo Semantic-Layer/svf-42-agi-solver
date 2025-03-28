@@ -29,8 +29,8 @@ coverage.json
 # Gas report
 gas-report.txt
 
-# Deployment artifacts
-deployments/
+# local AnvilDeployment artifacts
+deployments/*/31337.json
 
 # Local development files
 .DS_Store

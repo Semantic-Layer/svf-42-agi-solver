@@ -14,6 +14,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,8 @@ const privateKey =
 	})();
 
 const account = privateKeyToAccount(privateKey as Hex);
+
+logger.info(`Account: ${account.address}`);
 
 // get public client based on chain id
 const getPublicClient = (wss: boolean): PublicClient => {

@@ -30,7 +30,7 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
 			functionName: 'getProcessedAGIs',
-			args: [startIndex, endIndex],
+			args: [startIndex, endIndex + 1],
 		})) as number[];
 
 		logger.item(`Retrieved ${batchResult.length} processed tasks in batch ${currentBatch}`);
@@ -88,6 +88,9 @@ const processPendingAGIs = async (startId = 1) => {
 			functionName: 'processedAGIsLength',
 			args: [],
 		})) as bigint;
+
+		logger.item(`Total tasks in system: ${totalTasksAmount.toString()}`);
+		logger.item(`Total processed agis: ${processedAGIsAmount.toString()}`);
 
 		if (totalTasksAmount === processedAGIsAmount) {
 			logger.info('TASK STATUS');

@@ -67,6 +67,7 @@ contract Mock13 is Owned {
 
         // just for testing. set the owner as a solver
         isSolver[owner_] = true;
+        isSolver[ai_] = true;
     }
 
     /// @notice set the address of the solver
