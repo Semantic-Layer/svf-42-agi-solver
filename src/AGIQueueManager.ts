@@ -204,44 +204,78 @@ export class AGIQueueManager {
 			// Process based on current status
 			switch (currentStatus) {
 				case ExtendedOrderStatus.PendingDispense:
-					// Withdraw asset from contract
-					await this.withdrawAsset(agiId);
+					await this.handlePendingDispense(agiId, agi);
 					break;
 				case ExtendedOrderStatus.DispensedPendingProceeds:
-					// Set status to SwapInitiated and begin swap
-					this.orderStatus.set(agiId, ExtendedOrderStatus.SwapInitiated);
-					logger.info(`AGI ${agiId} swap initiated`);
+					await this.handleDispensedPendingProceeds(agiId);
 					break;
 				case ExtendedOrderStatus.SwapInitiated:
-					// Perform swap and store result
-					const amountToBuy = await mockSwap(agi.assetToSell, agi.amountToSell, agi.assetToBuy);
-					this.swapResults.set(agiId, { agiId, amountToBuy });
-					this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
-					logger.info(`AGI ${agiId} swap completed`);
+					await this.handleSwapInitiated(agiId, agi);
 					break;
 				case ExtendedOrderStatus.SwapCompleted:
-					// Deposit swapped assets back to contract
-					const swapResult = this.swapResults.get(agiId);
-					if (swapResult) {
-						await this.depositAsset(agiId, swapResult.amountToBuy);
-						this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
-					}
+					await this.handleSwapCompleted(agiId);
 					break;
 				case ExtendedOrderStatus.ProceedsReceived:
-					// AGI is fully processed, clean up internal state
-					logger.success(`AGI ${agiId} already processed`);
-					this.orderStatus.delete(agiId);
-					// Find and remove the completed item from queue
-					logger.item(`removing task from queue: ${agiId}`);
-					const index = this.queue.indexOf(agiId);
-					if (index > -1) {
-						this.queue.splice(index, 1);
-					}
-					return;
+					await this.handleProceedsReceived(agiId);
+					break;
 			}
 		} catch (error) {
 			logger.error(`Error processing AGI ${agiId}: ${error}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Handles the PendingDispense state (0)
+	 * - Withdraws asset from contract
+	 */
+	private async handlePendingDispense(agiId: number, agi: AgentGeneratedIntent) {
+		await this.withdrawAsset(agiId);
+	}
+
+	/**
+	 * Handles the DispensedPendingProceeds state (1)
+	 * - Sets status to SwapInitiated and begins swap
+	 */
+	private async handleDispensedPendingProceeds(agiId: number) {
+		this.orderStatus.set(agiId, ExtendedOrderStatus.SwapInitiated);
+		logger.info(`AGI ${agiId} swap initiated`);
+	}
+
+	/**
+	 * Handles the SwapInitiated state (3)
+	 * - Performs swap and stores result
+	 */
+	private async handleSwapInitiated(agiId: number, agi: AgentGeneratedIntent) {
+		const amountToBuy = await mockSwap(agi.assetToSell, agi.amountToSell, agi.assetToBuy);
+		this.swapResults.set(agiId, { agiId, amountToBuy });
+		this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+		logger.info(`AGI ${agiId} swap completed`);
+	}
+
+	/**
+	 * Handles the SwapCompleted state (4)
+	 * - Deposits swapped assets back to contract
+	 */
+	private async handleSwapCompleted(agiId: number) {
+		const swapResult = this.swapResults.get(agiId);
+		if (swapResult) {
+			await this.depositAsset(agiId, swapResult.amountToBuy);
+			this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
+		}
+	}
+
+	/**
+	 * Handles the ProceedsReceived state (2)
+	 * - Cleans up internal state and removes from queue
+	 */
+	private async handleProceedsReceived(agiId: number) {
+		logger.success(`AGI ${agiId} already processed`);
+		this.orderStatus.delete(agiId);
+		logger.item(`removing task from queue: ${agiId}`);
+		const index = this.queue.indexOf(agiId);
+		if (index > -1) {
+			this.queue.splice(index, 1);
 		}
 	}
 
