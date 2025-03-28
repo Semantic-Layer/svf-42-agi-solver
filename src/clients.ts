@@ -61,7 +61,7 @@ const account = privateKeyToAccount(privateKey as Hex);
 logger.info(`Account: ${account.address}`);
 
 // get public client based on chain id
-const getPublicClient = (wss: boolean): PublicClient => {
+const getPublicClient = (wss: boolean) => {
 	if (wss) {
 		// https://viem.sh/docs/clients/transports/websocket
 		return createPublicClient({
@@ -70,12 +70,12 @@ const getPublicClient = (wss: boolean): PublicClient => {
 				keepAlive: true, // or we can set `{ interval: 1_000 },`
 				reconnect: true,
 			}),
-		}) as PublicClient;
+		});
 	} else {
 		return createPublicClient({
 			chain: anvil,
 			transport: http(rpc),
-		}) as PublicClient;
+		});
 	}
 };
 
