@@ -25,7 +25,7 @@
 		"preinstall": "npx only-allow pnpm",
 		"lint": "eslint . --max-warnings 0",
 		"prepare": "husky",
-		"start": "ts-node --esm src/index.ts",
+		"start": "node --loader ts-node/esm src/index.ts",
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"tsc": "tsc"
 	},

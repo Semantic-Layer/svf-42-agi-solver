@@ -5,6 +5,8 @@ import {
 	createWalletClient,
 	type WalletClient,
 	type Hex,
+	type PublicClient,
+	type WebSocketTransportConfig,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { anvil } from 'viem/chains';
@@ -60,17 +62,20 @@ const account = privateKeyToAccount(privateKey as Hex);
 logger.info(`Account: ${account.address}`);
 
 // get public client based on chain id
-const getPublicClient = (wss: boolean) => {
+const getPublicClient = (wss: boolean): PublicClient => {
 	if (wss) {
-		// https://viem.sh/docs/clients/transports/websocket
+		const wsConfig = {
+			keepAlive: true,
+			reconnect: true,
+		} satisfies WebSocketTransportConfig;
+
+		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
 			chain: anvil,
-			transport: webSocket(wssRpc, {
-				keepAlive: true, // or we can set `{ interval: 1_000 },`
-				reconnect: true,
-			}),
+			transport: webSocket(wssRpc, wsConfig),
 		});
 	} else {
+		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
 			chain: anvil,
 			transport: http(rpc),
@@ -84,7 +89,7 @@ const getWalletClient = (): WalletClient =>
 		account,
 		chain: anvil,
 		transport: http(rpc),
-	}) as WalletClient;
+	});
 
 export const publicClientHTTP = getPublicClient(false);
 export const publicClientWSS = getPublicClient(true);
