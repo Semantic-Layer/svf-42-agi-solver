@@ -28,9 +28,9 @@ export const agiContractABI = AGI.abi;
 
 const chainId = parseInt(
 	process.env.CHAIN_ID ||
-	(() => {
-		throw new Error('CHAIN_ID environment variable is required.');
-	})()
+		(() => {
+			throw new Error('CHAIN_ID environment variable is required.');
+		})()
 );
 
 // get contract address
