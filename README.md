@@ -14,17 +14,46 @@
 
 AGI Solver is a backend system written in TypeScript designed to reliably fulfill onchain interaction requests (Agent Generated Intents) for AI agents. It serves as a critical bridge between AI agents and blockchain interactions, ensuring reliable execution of complex onchain operations.
 
-## Usage
+## Setup
 
-```shell
-npm i svf-agi-solver-internal
-```
+1. Clone the repository
+2. Set up environment variables:
 
-```ts
-import { greet } from 'svf-agi-solver-internal';
+   ```bash
+   cp .env.example .env
+   ```
 
-greet('Hello, world! 💖');
-```
+   ```bash
+   cd contracts
+   cp .env.example .env
+   ```
+
+3. Deploy contracts
+
+   start an anvil node first
+
+   ```bash
+   anvil
+   ```
+
+   then
+   under root directory
+
+   ```
+   make deploy
+   ```
+
+4. Start solver
+   ```
+   make start
+   ```
+5. Publish an agi
+
+   ```bash
+   #e.g.
+   make sellTokenA
+
+   ```
 
 ## Development
 
