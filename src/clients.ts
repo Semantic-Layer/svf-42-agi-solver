@@ -5,6 +5,12 @@ import {
 	createWalletClient,
 	type WalletClient,
 	type Hex,
+	type PublicClient,
+	type WebSocketTransportConfig,
+	type Transport,
+	type Chain,
+	type HttpTransport,
+	type WebSocketTransport,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { anvil } from 'viem/chains';
@@ -26,9 +32,9 @@ export const agiContractABI = AGI.abi;
 
 const chainId = parseInt(
 	process.env.CHAIN_ID ||
-		(() => {
-			throw new Error('CHAIN_ID environment variable is required.');
-		})()
+	(() => {
+		throw new Error('CHAIN_ID environment variable is required.');
+	})()
 );
 
 // get contract address
@@ -60,18 +66,21 @@ const account = privateKeyToAccount(privateKey as Hex);
 logger.info(`Account: ${account.address}`);
 
 // get public client based on chain id
-const getPublicClient = (wss: boolean) => {
+const getPublicClient = (wss: boolean): PublicClient => {
 	if (wss) {
-		// https://viem.sh/docs/clients/transports/websocket
-		return createPublicClient({
+		const wsConfig = {
+			keepAlive: true,
+			reconnect: true,
+		} satisfies WebSocketTransportConfig;
+
+		// @ts-ignore - Known viem type issue with account property
+		return createPublicClient<WebSocketTransport>({
 			chain: anvil,
-			transport: webSocket(wssRpc, {
-				keepAlive: true, // or we can set `{ interval: 1_000 },`
-				reconnect: true,
-			}),
+			transport: webSocket(wssRpc, wsConfig),
 		});
 	} else {
-		return createPublicClient({
+		// @ts-ignore - Known viem type issue with account property
+		return createPublicClient<HttpTransport>({
 			chain: anvil,
 			transport: http(rpc),
 		});
@@ -84,7 +93,7 @@ const getWalletClient = (): WalletClient =>
 		account,
 		chain: anvil,
 		transport: http(rpc),
-	}) as WalletClient;
+	});
 
 export const publicClientHTTP = getPublicClient(false);
 export const publicClientWSS = getPublicClient(true);
