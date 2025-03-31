@@ -7,10 +7,6 @@ import {
 	type Hex,
 	type PublicClient,
 	type WebSocketTransportConfig,
-	type Transport,
-	type Chain,
-	type HttpTransport,
-	type WebSocketTransport,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { anvil } from 'viem/chains';
@@ -73,14 +69,14 @@ const getPublicClient = (wss: boolean): PublicClient => {
 			reconnect: true,
 		} satisfies WebSocketTransportConfig;
 
-		// @ts-ignore - Known viem type issue with account property
-		return createPublicClient<WebSocketTransport>({
+		// @ts-expect-error - Known viem type issue with account property
+		return createPublicClient({
 			chain: anvil,
 			transport: webSocket(wssRpc, wsConfig),
 		});
 	} else {
-		// @ts-ignore - Known viem type issue with account property
-		return createPublicClient<HttpTransport>({
+		// @ts-expect-error - Known viem type issue with account property
+		return createPublicClient({
 			chain: anvil,
 			transport: http(rpc),
 		});
