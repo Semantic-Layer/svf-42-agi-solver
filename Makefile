@@ -19,7 +19,8 @@ publishAGI:
 		echo 'Usage: make publishAGI \'; \
 		echo '  ASSET_TO_SELL=0x... \'; \
 		echo '  AMOUNT_TO_SELL=1000000000000000000 \'; \
-		echo '  ASSET_TO_BUY=0x...'; \
+		echo '  ASSET_TO_BUY=0x... \'; \
+		echo '  [ORDER_TYPE=0]'; \
 		exit 1; \
 	fi
 	$(eval CONTRACT_ADDRESS := $(shell jq -r '.addresses.agi' contracts/deployments/agi/31337.json))
@@ -28,7 +29,8 @@ publishAGI:
 		exit 1; \
 	fi
 	cast send $(CONTRACT_ADDRESS) \
-		'publishAGI(address,uint256,address)' \
+		'publishAGI(uint8,address,uint256,address)' \
+		$(if $(ORDER_TYPE),$(ORDER_TYPE),0) \
 		$(ASSET_TO_SELL) \
 		$(AMOUNT_TO_SELL) \
 		$(ASSET_TO_BUY) \

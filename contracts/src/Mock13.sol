@@ -76,7 +76,7 @@ contract Mock13 is Owned {
     }
 
     /// @notice publish a new AGI
-    function publishAGI(address assetToSell, uint256 amountToSell, address assetToBuy)
+    function publishAGI(uint8 _orderType, address assetToSell, uint256 amountToSell, address assetToBuy)
         external
         onlyAI
     {
