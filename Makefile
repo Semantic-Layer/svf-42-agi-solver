@@ -14,13 +14,13 @@ deploy:
 
 
 publishAGI:
-	@if [ -z '$(INTENT_TYPE)' ] || [ -z '$(ASSET_TO_SELL)' ] || [ -z '$(AMOUNT_TO_SELL)' ] || [ -z '$(ASSET_TO_BUY)' ]; then \
+	@if [ -z '$(ASSET_TO_SELL)' ] || [ -z '$(AMOUNT_TO_SELL)' ] || [ -z '$(ASSET_TO_BUY)' ]; then \
 		echo 'Error: Missing required parameters.'; \
 		echo 'Usage: make publishAGI \'; \
-		echo '  INTENT_TYPE=0 \'; \
 		echo '  ASSET_TO_SELL=0x... \'; \
 		echo '  AMOUNT_TO_SELL=1000000000000000000 \'; \
-		echo '  ASSET_TO_BUY=0x...'; \
+		echo '  ASSET_TO_BUY=0x... \'; \
+		echo '  [ORDER_TYPE=0]'; \
 		exit 1; \
 	fi
 	$(eval CONTRACT_ADDRESS := $(shell jq -r '.addresses.agi' contracts/deployments/agi/31337.json))
@@ -30,7 +30,7 @@ publishAGI:
 	fi
 	cast send $(CONTRACT_ADDRESS) \
 		'publishAGI(uint8,address,uint256,address)' \
-		$(INTENT_TYPE) \
+		$(if $(ORDER_TYPE),$(ORDER_TYPE),0) \
 		$(ASSET_TO_SELL) \
 		$(AMOUNT_TO_SELL) \
 		$(ASSET_TO_BUY) \
@@ -45,7 +45,6 @@ sellTokenA:
 		exit 1; \
 	fi
 	${MAKE} publishAGI \
-		INTENT_TYPE=0 \
 		ASSET_TO_SELL=$(TOKEN_A) \
 		AMOUNT_TO_SELL=1000000000000000000 \
 		ASSET_TO_BUY=$(TOKEN_B)

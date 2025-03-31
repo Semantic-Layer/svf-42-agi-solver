@@ -1,39 +1,127 @@
+import winston from 'winston';
+
 // Color constants for terminal output
 const colors = {
 	reset: '\x1b[0m',
 	bright: '\x1b[1m',
 	green: '\x1b[32m',
 	yellow: '\x1b[33m',
-	blue: '\x1b[34m',
+	blue: '\x1b[94m',
 	magenta: '\x1b[35m',
 	cyan: '\x1b[36m',
 	red: '\x1b[31m',
 };
 
-// Logger helper for elegant colored console logs
-export const logger = {
-	// Separator line
-	separator: () =>
-		console.log(
-			'======================================================================================='
+// winston logger configuration
+const loggerTransports = {
+	console: new winston.transports.Console({
+		format: winston.format.printf(({ message }) => message as string), // directly output colored message
+	}),
+	successFile: new winston.transports.File({
+		filename: 'logs/success.log',
+		level: 'info', // only accept info level
+		format: winston.format.combine(
+			winston.format.timestamp(),
+			// filter out error level logs
+			winston.format(info => {
+				if (info.level === 'error') {
+					return false;
+				}
+				return info;
+			})(),
+			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
-
-	// Main header logs with different colors
-	info: (message: string) => console.log(`${colors.cyan}[SVF:42 COPIUM] ${message}${colors.reset}`),
-	success: (message: string) =>
-		console.log(`${colors.green}[SVF:42 COPIUM] ${message}${colors.reset}`),
-	warning: (message: string) =>
-		console.log(`${colors.yellow}[SVF:42 COPIUM] ${message}${colors.reset}`),
-	process: (message: string) =>
-		console.log(`${colors.blue}[SVF:42 COPIUM] ${message}${colors.reset}`),
-	event: (message: string) =>
-		console.log(`${colors.magenta}[SVF:42 COPIUM] ${message}${colors.reset}`),
-	error: (message: string) => console.log(`${colors.red}[SVF:42 COPIUM] ${message}${colors.reset}`),
-
-	// Content logs (for details under headers)
-	item: (message: string) => console.log(` > ${message}`),
-	subItem: (message: string) => console.log(`   * ${message}`),
+	}),
+	errorFile: new winston.transports.File({
+		filename: 'logs/fail.log',
+		level: 'error', // only accept error level
+		format: winston.format.combine(
+			winston.format.timestamp(),
+			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
+		),
+	}),
 };
 
-// Export default for convenience
+// create logger instance
+const winstonLogger = winston.createLogger({
+	levels: winston.config.npm.levels, // ensure using default levels
+	transports: [loggerTransports.console, loggerTransports.successFile, loggerTransports.errorFile],
+});
+
+// custom logger, keep colors and adapt to file output
+export const logger = {
+	separator: () => {
+		const separator =
+			'=======================================================================================';
+		console.log(separator); // only output to console
+	},
+
+	info: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.info({
+			message: logMessage, // file output pure text
+			consoleMessage: `${colors.cyan}${logMessage}${colors.reset}`, // console with colors
+		});
+	},
+	success: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: `${colors.green}${logMessage}${colors.reset}`,
+		});
+	},
+	warning: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: `${colors.yellow}${logMessage}${colors.reset}`,
+		});
+	},
+	process: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: `${colors.blue}${logMessage}${colors.reset}`,
+		});
+	},
+	event: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: `${colors.magenta}${logMessage}${colors.reset}`,
+		});
+	},
+	error: message => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		winstonLogger.error({
+			message: logMessage,
+			consoleMessage: `${colors.red}${logMessage}${colors.reset}`,
+		});
+	},
+
+	item: message => {
+		const logMessage = ` > ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: logMessage, // item does not need colors
+		});
+	},
+	subItem: message => {
+		const logMessage = `   * ${message}`;
+		winstonLogger.info({
+			message: logMessage,
+			consoleMessage: logMessage, // subItem does not need colors
+		});
+	},
+};
+
+// custom format, distinguish console and file output
+winstonLogger.format = winston.format.combine(
+	winston.format(info => {
+		// if consoleMessage exists, use it as console output, otherwise use message
+		info.message = info.consoleMessage || info.message;
+		return info;
+	})()
+);
+
 export default logger;

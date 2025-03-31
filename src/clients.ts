@@ -1,19 +1,24 @@
 import {
-	Hex,
 	createPublicClient,
-	Chain,
 	webSocket,
 	http,
 	createWalletClient,
-	PublicClient,
-	WalletClient,
+	type WalletClient,
+	type Hex,
+	type PublicClient,
+	type WebSocketTransportConfig,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { anvil, baseSepolia } from 'viem/chains';
+import { anvil } from 'viem/chains';
 import 'dotenv/config';
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import logger from './logger.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const AGI = JSON.parse(
 	fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
@@ -21,7 +26,6 @@ const AGI = JSON.parse(
 
 export const agiContractABI = AGI.abi;
 
-const chains = [anvil, baseSepolia];
 const chainId = parseInt(
 	process.env.CHAIN_ID ||
 		(() => {
@@ -31,7 +35,7 @@ const chainId = parseInt(
 
 // get contract address
 const coreDeploymentData = JSON.parse(
-	fs.readFileSync(path.resolve(__dirname, `../contracts/deployments/agi/${chainId}.json`), 'utf8')
+	fs.readFileSync(path.join(__dirname, `../contracts/deployments/agi/${chainId}.json`), 'utf8')
 );
 export const agiContractAddress = coreDeploymentData.addresses.agi;
 
@@ -55,33 +59,38 @@ const privateKey =
 
 const account = privateKeyToAccount(privateKey as Hex);
 
+logger.info(`Account: ${account.address}`);
+
 // get public client based on chain id
-const getPublicClient = (wss: boolean, chainId: number) => {
+const getPublicClient = (wss: boolean): PublicClient => {
 	if (wss) {
-		// https://viem.sh/docs/clients/transports/websocket
+		const wsConfig = {
+			keepAlive: true,
+			reconnect: true,
+		} satisfies WebSocketTransportConfig;
+
+		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
-			chain: chains.find(chain => chain.id == chainId) as Chain,
-			transport: webSocket(wssRpc, {
-				keepAlive: true, // or we can set `{ interval: 1_000 },`
-				reconnect: true,
-			}),
+			chain: anvil,
+			transport: webSocket(wssRpc, wsConfig),
 		});
 	} else {
+		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
-			chain: chains.find(chain => chain.id == chainId) as Chain,
+			chain: anvil,
 			transport: http(rpc),
 		});
 	}
 };
 
 /// get wallet client based on chain id
-const getWalletClient = (chainId: number) =>
+const getWalletClient = (): WalletClient =>
 	createWalletClient({
 		account,
-		chain: chains.find(chain => chain.id == chainId) as Chain,
+		chain: anvil,
 		transport: http(rpc),
 	});
 
-export const publicClientHTTP: PublicClient = getPublicClient(false, chainId);
-export const publicClientWSS: PublicClient = getPublicClient(true, chainId);
-export const walletClient: WalletClient = getWalletClient(chainId);
+export const publicClientHTTP = getPublicClient(false);
+export const publicClientWSS = getPublicClient(true);
+export const walletClient = getWalletClient();

@@ -1,5 +1,5 @@
-import logger from './logger';
-import startListener from './solver';
+import logger from './logger.ts';
+import startListener from './solver.ts';
 
 startListener().catch(error => {
 	logger.item('Error starting listener:');
