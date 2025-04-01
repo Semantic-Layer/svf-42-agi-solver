@@ -7,9 +7,10 @@ import {
 	type Hex,
 	type PublicClient,
 	type WebSocketTransportConfig,
+	type Chain,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { anvil } from 'viem/chains';
+import { anvil, base, baseSepolia } from 'viem/chains';
 import 'dotenv/config';
 
 import fs from 'fs';
@@ -19,12 +20,7 @@ import logger from './logger.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const AGI = JSON.parse(
-	fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
-);
-
-export const agiContractABI = AGI.abi;
+const chains = [base, baseSepolia, anvil];
 
 const chainId = parseInt(
 	process.env.CHAIN_ID ||
@@ -32,6 +28,16 @@ const chainId = parseInt(
 			throw new Error('CHAIN_ID environment variable is required.');
 		})()
 );
+
+const chainConfig = {
+	chain: chains.find(chain => chain.id == chainId) as Chain,
+};
+
+const AGI = JSON.parse(
+	fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
+);
+
+export const agiContractABI = AGI.abi;
 
 // get contract address
 const coreDeploymentData = JSON.parse(
@@ -69,15 +75,13 @@ const getPublicClient = (wss: boolean): PublicClient => {
 			reconnect: true,
 		} satisfies WebSocketTransportConfig;
 
-		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
-			chain: anvil,
+			...chainConfig,
 			transport: webSocket(wssRpc, wsConfig),
 		});
 	} else {
-		// @ts-expect-error - Known viem type issue with account property
 		return createPublicClient({
-			chain: anvil,
+			...chainConfig,
 			transport: http(rpc),
 		});
 	}
@@ -87,10 +91,12 @@ const getPublicClient = (wss: boolean): PublicClient => {
 const getWalletClient = (): WalletClient =>
 	createWalletClient({
 		account,
-		chain: anvil,
+		...chainConfig,
 		transport: http(rpc),
 	});
 
 export const publicClientHTTP = getPublicClient(false);
 export const publicClientWSS = getPublicClient(true);
 export const walletClient = getWalletClient();
+export { account };
+export { chains };
