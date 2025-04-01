@@ -18,6 +18,7 @@ contract PublishAGIScript is Script {
 
         // Publish an AGI to trade TokenA for TokenB
         mock13.publishAGI(
+            0,
             TOKEN_A_ADDRESS, // assetToSell
             100 * 1e18, // amountToSell (100 tokens)
             TOKEN_B_ADDRESS // assetToBuy
