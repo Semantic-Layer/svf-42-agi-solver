@@ -3,7 +3,12 @@ fmt:
 	cd contracts && forge fmt
 
 start:
-	pnpm install && pnpm start
+	pnpm install && pnpm build && pnpm start
+
+dev:
+	@echo "start the development server with watch..."
+	pnpm install
+	pnpm dev
 
 build:
 	pnpm build

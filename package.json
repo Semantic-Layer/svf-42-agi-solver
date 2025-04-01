@@ -16,19 +16,18 @@
 		"package.json"
 	],
 	"scripts": {
-		"build": "tsup",
 		"dev": "tsx watch src/index.ts",
+		"start:dev": "tsx src/index.ts",
+		"build": "tsup",
+		"start": "node dist/index.js",
+		"tsc": "tsc",
 		"fmt": "prettier --write .",
 		"fmt:check": "prettier --check .",
 		"fmt:src": "prettier --write \"src/**/*.{ts,tsx}\"",
-		"format": "prettier .",
-		"preinstall": "npx only-allow pnpm",
 		"lint": "eslint . --max-warnings 0",
-		"prepare": "husky",
-		"start": "node dist/index.js",
-		"start:dev": "tsx src/index.ts",
-		"test": "echo \"Error: no test specified\" && exit 1",
-		"tsc": "tsc"
+		"preinstall": "npx only-allow pnpm",
+		"prepare": "husky install",
+		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"lint-staged": {
 		"*": "prettier --ignore-unknown --write"
