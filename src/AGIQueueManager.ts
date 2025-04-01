@@ -50,18 +50,20 @@
 
 import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
-import { mockSwap } from './mockSwap.ts';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
+import { defaultSwap } from './swap/lifiSwap.ts';
 
 /**
  * Represents the result of a swap operation
  * @property agiId - The ID of the AGI that initiated the swap
  * @property amountToBuy - The amount of tokens to buy after the swap
+ * @property status - The status of the swap operation
  */
 interface SwapResult {
 	agiId: number;
 	amountToBuy: number;
+	status: 'pending' | 'completed' | 'failed';
 }
 
 /**
@@ -247,10 +249,45 @@ export class AGIQueueManager {
 	 * - Performs swap and stores result
 	 */
 	private async handleSwapInitiated(agiId: number, agi: AgentGeneratedIntent) {
-		const amountToBuy = await mockSwap(agi.assetToSell, agi.amountToSell, agi.assetToBuy);
-		this.swapResults.set(agiId, { agiId, amountToBuy });
-		this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
-		logger.info(`AGI ${agiId} swap completed`);
+		// Check if swap is already in process
+		logger.info(`checking if swap is already in process`);
+		const existingSwap = this.swapResults.get(agiId);
+		if (existingSwap) {
+			logger.info(`swap already in process: ${existingSwap.status}`);
+			if (existingSwap.status === 'pending') {
+				logger.info(`AGI ${agiId} swap already in process, waiting...`);
+				return;
+			} else if (existingSwap.status === 'completed') {
+				logger.info(`AGI ${agiId} swap already completed`);
+				this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+				return;
+			}
+		}
+
+		// Initialize swap as pending
+		logger.info(`initializing swap as pending`);
+		this.swapResults.set(agiId, { agiId, amountToBuy: 0, status: 'pending' });
+
+		try {
+			logger.info(`starting swap`);
+			const amountToBuy = await defaultSwap({
+				fromToken: agi.assetToSell,
+				toToken: agi.assetToBuy,
+				fromAmount: agi.amountToSell.toString(),
+				fromAddress: walletClient.account!.address,
+			});
+			this.swapResults.set(agiId, {
+				agiId,
+				amountToBuy: parseInt(amountToBuy),
+				status: 'completed',
+			});
+			this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+			logger.info(`AGI ${agiId} swap completed`);
+		} catch (error) {
+			this.swapResults.set(agiId, { agiId, amountToBuy: 0, status: 'failed' });
+			logger.error(`AGI ${agiId} swap failed: ${error}`);
+			throw error;
+		}
 	}
 
 	/**

@@ -99,4 +99,4 @@ export const publicClientHTTP = getPublicClient(false);
 export const publicClientWSS = getPublicClient(true);
 export const walletClient = getWalletClient();
 export { account };
-export { chains };
+export { chains, chainId };
