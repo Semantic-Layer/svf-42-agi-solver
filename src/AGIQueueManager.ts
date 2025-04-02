@@ -53,6 +53,7 @@ import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
+import { checkTransactionReceipt } from './utils.ts';
 
 /**
  * Represents the result of a swap operation
@@ -97,8 +98,10 @@ export class AGIQueueManager {
 	private queue: number[];
 	/** Flag to prevent concurrent processing */
 	private isProcessing: boolean;
-	/** Maps AGI IDs to their extended status (combines contract and internal states) */
+	/** Maps AGI IDs to their extended status (combines contract and internal swap states) */
 	private orderStatus: Map<number, ExtendedOrderStatus>;
+
+	private readonly RETRY_DELAY = 1000; // 1 second delay between retries
 
 	constructor() {
 		this.swapResults = new Map();
@@ -222,7 +225,10 @@ export class AGIQueueManager {
 					break;
 			}
 		} catch (error) {
-			logger.error(`Error processing AGI ${agiId}: ${error}`);
+			logger.error(`Error processing AGI ${agiId}, retry in ${this.RETRY_DELAY}ms`);
+			logger.item(`error: ${error}`);
+			// Add delay before retry
+			await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY)); // 5 second delay
 			throw error;
 		}
 	}
@@ -331,10 +337,11 @@ export class AGIQueueManager {
 				args: [orderIndex],
 			});
 
-			await walletClient.writeContract(request);
-			logger.success(`txn success: withdrew asset for AGI ${orderIndex}`);
+			const hash = await walletClient.writeContract(request);
+			logger.item(`[Order ${orderIndex}]: withdraw txn hash: ${hash}`);
+			await checkTransactionReceipt(hash, `[withdraw txn hash for AGI ${orderIndex}]`);
 		} catch (error) {
-			logger.error(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
+			logger.subItem(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
 		}
 	}
@@ -356,10 +363,11 @@ export class AGIQueueManager {
 			});
 
 			await walletClient.writeContract(request);
-			logger.success(`txn success: deposited asset for AGI ${orderIndex}`);
-			this.swapResults.delete(orderIndex);
+			const hash = await walletClient.writeContract(request);
+			logger.item(`[Order ${orderIndex}]: deposit txn hash: ${hash}`);
+			await checkTransactionReceipt(hash, `[deposit txn hash for AGI ${orderIndex}]`);
 		} catch (error) {
-			logger.error(`Error depositing asset for AGI ${orderIndex}: ${error}`);
+			logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
 		}
 	}
