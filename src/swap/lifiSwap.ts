@@ -1,6 +1,7 @@
 import { createConfig, EVM, executeRoute, getRoutes, RouteOptions } from '@lifi/sdk';
 import { chainId, walletClient } from '../clients.ts';
 import logger from '../logger.ts';
+import { NoRoutesFoundError } from '../errors.ts';
 
 export interface SwapParams {
 	chainId: number;
@@ -47,7 +48,9 @@ export async function swap({
 		options: options,
 	});
 
-	if (!result.routes.length) throw new Error('No routes found');
+	if (!result.routes.length) {
+		throw new NoRoutesFoundError();
+	}
 
 	logger.info(`routes found: ${result.routes.length}`);
 	logger.item(`best route: ${result.routes[0]}`);

@@ -48,12 +48,20 @@
  *    - Maintain FIFO order while allowing other items to be processed
  */
 
-import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
+import {
+	walletClient,
+	publicClientHTTP,
+	agiContractAddress,
+	agiContractABI,
+	chainId,
+} from './clients.ts';
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
 import { checkTransactionReceipt } from './utils.ts';
+import { NoRoutesFoundError, MaxRetriesExceededError } from './errors.ts';
+import { RouteExtended } from '@lifi/sdk';
 
 /**
  * Represents the result of a swap operation
@@ -100,14 +108,19 @@ export class AGIQueueManager {
 	private isProcessing: boolean;
 	/** Maps AGI IDs to their extended status (combines contract and internal swap states) */
 	private orderStatus: Map<number, ExtendedOrderStatus>;
+	/** Maps AGI IDs to their retry counts */
+	private retryCounts: Map<number, number>;
 
 	private readonly RETRY_DELAY = 1000; // 1 second delay between retries
+	private readonly SWAP_RETRY_DELAY = 30000; // 30 seconds delay for swap retries
+	private readonly MAX_RETRIES = 3; // Maximum number of retries
 
 	constructor() {
 		this.swapResults = new Map();
 		this.queue = [];
 		this.isProcessing = false;
 		this.orderStatus = new Map();
+		this.retryCounts = new Map();
 	}
 
 	/**
@@ -225,10 +238,30 @@ export class AGIQueueManager {
 					break;
 			}
 		} catch (error) {
-			logger.error(`Error processing AGI ${agiId}, retry in ${this.RETRY_DELAY}ms`);
+			const retryCount = (this.retryCounts.get(agiId) || 0) + 1;
+			this.retryCounts.set(agiId, retryCount);
+
+			if (retryCount >= this.MAX_RETRIES) {
+				logger.error(
+					`Max retries (${this.MAX_RETRIES}) exceeded for AGI ${agiId}, removing from queue`
+				);
+				this.removeFromQueue(agiId);
+				return;
+			}
+
+			// Use SWAP_RETRY_DELAY for both NoRoutesFoundError and other swap-related errors
+			const delay =
+				error instanceof NoRoutesFoundError ||
+				(error instanceof Error && error.message.includes('swap'))
+					? this.SWAP_RETRY_DELAY
+					: this.RETRY_DELAY;
+
+			logger.error(
+				`Error processing AGI ${agiId}, retry ${retryCount}/${this.MAX_RETRIES} in ${delay}ms`
+			);
 			logger.item(`error: ${error}`);
-			// Add delay before retry
-			await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY)); // 5 second delay
+
+			await new Promise(resolve => setTimeout(resolve, delay));
 			throw error;
 		}
 	}
@@ -369,6 +402,16 @@ export class AGIQueueManager {
 		} catch (error) {
 			logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
+		}
+	}
+
+	private removeFromQueue(agiId: number) {
+		const index = this.queue.indexOf(agiId);
+		if (index > -1) {
+			this.queue.splice(index, 1);
+			this.retryCounts.delete(agiId);
+			this.orderStatus.delete(agiId);
+			this.swapResults.delete(agiId);
 		}
 	}
 }
