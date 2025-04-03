@@ -54,7 +54,7 @@ contract DeployScript is Script {
         // Set token allowances
         tokenA.approve(address(mock13), type(uint256).max);
         tokenB.approve(address(mock13), type(uint256).max);
-        TokenA(SVF_TOKEN).approve(address(mock13), type(uint256).max);
+        // TokenA(SVF_TOKEN).approve(address(mock13), type(uint256).max);
 
         // Log the addresses
         console.log("TokenA deployed to:", address(tokenA));

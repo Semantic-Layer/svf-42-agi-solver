@@ -36,11 +36,16 @@ AGI Solver is a backend system written in TypeScript designed to reliably fulfil
    anvil
    ```
 
-   then
-   under root directory
+   then install the dependencies under the `contracts/` foler:
 
    ```
-   make deploy
+   forge install
+   ```
+
+   finally, under root directory
+
+   ```
+   make anvilDeploy
    ```
 
 4. Start solver
@@ -52,7 +57,6 @@ AGI Solver is a backend system written in TypeScript designed to reliably fulfil
    ```bash
    #e.g.
    make sellTokenA
-
    ```
 
 ## Development
