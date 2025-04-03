@@ -56,42 +56,42 @@ export const logger = {
 		console.log(separator); // only output to console
 	},
 
-	info: message => {
+	info: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
 			message: logMessage, // file output pure text
 			consoleMessage: `${colors.cyan}${logMessage}${colors.reset}`, // console with colors
 		});
 	},
-	success: message => {
+	success: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
 			message: logMessage,
 			consoleMessage: `${colors.green}${logMessage}${colors.reset}`,
 		});
 	},
-	warning: message => {
+	warning: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
 			message: logMessage,
 			consoleMessage: `${colors.yellow}${logMessage}${colors.reset}`,
 		});
 	},
-	process: message => {
+	process: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
 			message: logMessage,
 			consoleMessage: `${colors.blue}${logMessage}${colors.reset}`,
 		});
 	},
-	event: message => {
+	event: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
 			message: logMessage,
 			consoleMessage: `${colors.magenta}${logMessage}${colors.reset}`,
 		});
 	},
-	error: message => {
+	error: (message: any) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.error({
 			message: logMessage,
@@ -99,14 +99,14 @@ export const logger = {
 		});
 	},
 
-	item: message => {
+	item: (message: any) => {
 		const logMessage = ` > ${message}`;
 		winstonLogger.info({
 			message: logMessage,
 			consoleMessage: logMessage, // item does not need colors
 		});
 	},
-	subItem: message => {
+	subItem: (message: any) => {
 		const logMessage = `   * ${message}`;
 		winstonLogger.info({
 			message: logMessage,

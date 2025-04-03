@@ -48,20 +48,13 @@
  *    - Maintain FIFO order while allowing other items to be processed
  */
 
-import {
-	walletClient,
-	publicClientHTTP,
-	agiContractAddress,
-	agiContractABI,
-	chainId,
-} from './clients.ts';
+import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
 import { checkTransactionReceipt } from './utils.ts';
-import { NoRoutesFoundError, MaxRetriesExceededError } from './errors.ts';
-import { RouteExtended } from '@lifi/sdk';
+import { NoRoutesFoundError } from './errors.ts';
 
 /**
  * Represents the result of a swap operation
