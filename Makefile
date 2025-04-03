@@ -87,3 +87,35 @@ sellTokenB:
 		AMOUNT_TO_SELL=1000000000000000000 \
 		ASSET_TO_BUY=$(TOKEN_A)
 
+# BUY TOKEN C with token B
+buyTokenC:
+	@if [ -z '$(CHAIN_ID)' ]; then \
+		echo 'Error: CHAIN_ID environment variable is not set'; \
+		exit 1; \
+	fi
+	$(eval TOKEN_B := $(shell jq -r '.addresses.tokenB' contracts/deployments/agi/$(CHAIN_ID).json))
+	@if [ -z '$(TOKEN_B)' ]; then \
+		echo 'Error: Could not find token B address in deployment file for chain ID $(CHAIN_ID)'; \
+		exit 1; \
+	fi
+	${MAKE} publishAGI \
+		ASSET_TO_SELL=$(TOKEN_B) \
+		AMOUNT_TO_SELL=1000000000000000000 \
+		ASSET_TO_BUY=0x96A98D61bCcb783160D296F107c30D0e90b2Abea
+
+# SELL TOKEN C with token B
+sellTokenC:
+	@if [ -z '$(CHAIN_ID)' ]; then \
+		echo 'Error: CHAIN_ID environment variable is not set'; \
+		exit 1; \
+	fi
+	$(eval TOKEN_B := $(shell jq -r '.addresses.tokenB' contracts/deployments/agi/$(CHAIN_ID).json))
+	@if [ -z '$(TOKEN_B)' ]; then \
+		echo 'Error: Could not find token B address in deployment file for chain ID $(CHAIN_ID)'; \
+		exit 1; \
+	fi
+	${MAKE} publishAGI \
+		ASSET_TO_SELL=0x96A98D61bCcb783160D296F107c30D0e90b2Abea \
+		AMOUNT_TO_SELL=1000000000000000000 \
+		ASSET_TO_BUY=$(TOKEN_B)
+

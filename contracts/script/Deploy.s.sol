@@ -12,7 +12,9 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 contract DeployScript is Script {
     using Strings for *;
 
+    // BASE MAINNET TOKENS
     address constant SVF_TOKEN = 0x637043af1A83e83e5A7D2BAcA4ABD1aA6c39E026;
+    address constant TOKENC = 0x96A98D61bCcb783160D296F107c30D0e90b2Abea;
 
     struct DeploymentData {
         address agiContract;
