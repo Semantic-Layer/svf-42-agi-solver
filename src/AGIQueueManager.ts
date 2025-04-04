@@ -54,7 +54,7 @@ import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
 import { checkTransactionReceipt } from './utils.ts';
-import { NoRoutesFoundError } from './errors.ts';
+import { NoRoutesFoundError, SwapError } from './errors.ts';
 
 /**
  * Represents the result of a swap operation
@@ -237,10 +237,7 @@ export class AGIQueueManager {
 			if (retryCount >= this.MAX_RETRIES) {
 				const errorMessage = `Max retries (${this.MAX_RETRIES}) exceeded for AGI ${agiId}, removing from queue`;
 				logger.error(errorMessage);
-				if (
-					error instanceof NoRoutesFoundError ||
-					(error instanceof Error && error.message.includes('swap'))
-				) {
+				if (error instanceof NoRoutesFoundError || error instanceof SwapError) {
 					logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
 				}
 				this.removeFromQueue(agiId);
@@ -248,8 +245,7 @@ export class AGIQueueManager {
 			}
 
 			const delay =
-				error instanceof NoRoutesFoundError ||
-				(error instanceof Error && error.message.includes('swap'))
+				error instanceof NoRoutesFoundError || error instanceof SwapError
 					? this.SWAP_RETRY_DELAY
 					: this.RETRY_DELAY;
 
@@ -322,7 +318,7 @@ export class AGIQueueManager {
 		} catch (error) {
 			this.swapResults.set(agiId, { agiId, amountToBuy: 0, status: 'failed' });
 			logger.error(`AGI ${agiId} swap failed: ${error}`);
-			throw error;
+			throw new SwapError(`Swap failed for AGI ${agiId}`, error);
 		}
 	}
 

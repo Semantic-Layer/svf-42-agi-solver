@@ -2,6 +2,7 @@ import { createConfig, EVM, executeRoute, getRoutes, RouteOptions } from '@lifi/
 import { chainId, walletClient } from '../clients.ts';
 import logger from '../logger.ts';
 import { NoRoutesFoundError } from '../errors.ts';
+import { formatEther } from 'viem';
 
 export interface SwapParams {
 	chainId: number;
@@ -47,6 +48,13 @@ export async function swap({
 		fromAddress: fromAddress,
 		options: options,
 	});
+	logger.info(`looking for routes on ${chainId}`);
+	logger.item(`fromToken: ${fromToken}`);
+	logger.item(`toToken: ${toToken}`);
+	logger.item(`fromAmount: ${fromAmount}`);
+	logger.item(`fromAmount in ether: ${formatEther(BigInt(fromAmount))}`);
+	logger.item(`fromAddress: ${fromAddress}`);
+	logger.item(`options: ${JSON.stringify(options)}`);
 
 	if (!result.routes.length) {
 		throw new NoRoutesFoundError();

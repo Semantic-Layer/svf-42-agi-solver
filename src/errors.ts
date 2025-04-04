@@ -11,3 +11,13 @@ export class MaxRetriesExceededError extends Error {
 		this.name = 'MaxRetriesExceededError';
 	}
 }
+
+export class SwapError extends Error {
+	originalError: Error | unknown;
+
+	constructor(message: string, originalError: Error | unknown) {
+		super(message);
+		this.name = 'SwapError';
+		this.originalError = originalError;
+	}
+}
