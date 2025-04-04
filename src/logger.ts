@@ -15,20 +15,46 @@ const colors = {
 // winston logger configuration
 const loggerTransports = {
 	console: new winston.transports.Console({
-		format: winston.format.printf(({ message }) => message as string), // directly output colored message
+		format: winston.format.combine(
+			winston.format.timestamp({
+				format: () => {
+					const now = new Date();
+					return now // `undefined`, will automatically use the system's default region
+						.toLocaleString(undefined, {
+							year: 'numeric',
+							month: '2-digit',
+							day: '2-digit',
+							hour: '2-digit',
+							minute: '2-digit',
+							second: '2-digit',
+							hour12: false,
+						})
+						.replace(/\//g, '-');
+				},
+			}),
+			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
+		),
 	}),
 	successFile: new winston.transports.File({
 		filename: 'logs/success.log',
 		level: 'info', // only accept info level
 		format: winston.format.combine(
-			winston.format.timestamp(),
-			// filter out error level logs
-			winston.format(info => {
-				if (info.level === 'error') {
-					return false;
-				}
-				return info;
-			})(),
+			winston.format.timestamp({
+				format: () => {
+					const now = new Date();
+					return now // `undefined`, will automatically use the system's default region
+						.toLocaleString(undefined, {
+							year: 'numeric',
+							month: '2-digit',
+							day: '2-digit',
+							hour: '2-digit',
+							minute: '2-digit',
+							second: '2-digit',
+							hour12: false,
+						})
+						.replace(/\//g, '-');
+				},
+			}),
 			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
 	}),
@@ -36,7 +62,22 @@ const loggerTransports = {
 		filename: 'logs/fail.log',
 		level: 'error', // only accept error level
 		format: winston.format.combine(
-			winston.format.timestamp(),
+			winston.format.timestamp({
+				format: () => {
+					const now = new Date();
+					return now // `undefined`, will automatically use the system's default region
+						.toLocaleString(undefined, {
+							year: 'numeric',
+							month: '2-digit',
+							day: '2-digit',
+							hour: '2-digit',
+							minute: '2-digit',
+							second: '2-digit',
+							hour12: false,
+						})
+						.replace(/\//g, '-');
+				},
+			}),
 			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
 	}),
@@ -44,7 +85,22 @@ const loggerTransports = {
 		filename: 'logs/failed_swaps.log',
 		level: 'error',
 		format: winston.format.combine(
-			winston.format.timestamp(),
+			winston.format.timestamp({
+				format: () => {
+					const now = new Date();
+					return now // `undefined`, will automatically use the system's default region
+						.toLocaleString(undefined, {
+							year: 'numeric',
+							month: '2-digit',
+							day: '2-digit',
+							hour: '2-digit',
+							minute: '2-digit',
+							second: '2-digit',
+							hour12: false,
+						})
+						.replace(/\//g, '-');
+				},
+			}),
 			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
 	}),
@@ -123,7 +179,7 @@ export const logger = {
 		const logMessage = ` > ${message}`;
 		winstonLogger.info({
 			message: logMessage,
-			consoleMessage: logMessage, // item does not need colors
+			consoleMessage: `${colors.bright}${logMessage}${colors.reset}`, // item does not need colors
 		});
 	},
 	subItem: (message: string) => {
