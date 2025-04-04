@@ -54,7 +54,7 @@ import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
 import { checkTransactionReceipt } from './utils.ts';
-import { NoRoutesFoundError, SwapError } from './errors.ts';
+import { SwapError } from './errors.ts';
 
 /**
  * Represents the result of a swap operation
@@ -234,7 +234,7 @@ export class AGIQueueManager {
 			const retryCount = (this.retryCounts.get(agiId) || 0) + 1;
 			this.retryCounts.set(agiId, retryCount);
 
-			const isSwapError = error instanceof SwapError || error instanceof NoRoutesFoundError;
+			const isSwapError = error instanceof SwapError;
 
 			// Only check max retries for swap-related errors
 			if (isSwapError && retryCount >= this.MAX_RETRIES) {

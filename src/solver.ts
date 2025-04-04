@@ -177,6 +177,9 @@ export default async function startListener() {
 		});
 
 		await processPendingAGIs();
+		setInterval(async () => {
+			await processPendingAGIs();
+		}, 30_000); // 30 seconds
 	} catch (error) {
 		console.error('Error starting listener', error);
 	}
