@@ -10,6 +10,9 @@ const colors = {
 	magenta: '\x1b[35m',
 	cyan: '\x1b[36m',
 	red: '\x1b[31m',
+	lightGray: '\x1b[37m',
+	lightBlue: '\x1b[94m',
+	lightCyan: '\x1b[96m',
 };
 
 // winston logger configuration
@@ -179,7 +182,7 @@ export const logger = {
 		const logMessage = ` > ${message}`;
 		winstonLogger.info({
 			message: logMessage,
-			consoleMessage: `${colors.bright}${logMessage}${colors.reset}`, // item does not need colors
+			consoleMessage: `${colors.lightBlue}${logMessage}${colors.reset}`, // item does not need colors
 		});
 	},
 	subItem: (message: string) => {

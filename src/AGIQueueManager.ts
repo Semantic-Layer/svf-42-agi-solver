@@ -409,4 +409,17 @@ export class AGIQueueManager {
 			this.swapResults.delete(agiId);
 		}
 	}
+
+	/**
+	 * Logs the count of failed swap tasks
+	 */
+	logFailedSwapTaskCount() {
+		const failedCount = Array.from(this.swapResults.values()).filter(
+			result => result.status === 'failed'
+		).length;
+		return failedCount;
+	}
 }
+
+// Create a single instance
+export const agiQueueManager = new AGIQueueManager();

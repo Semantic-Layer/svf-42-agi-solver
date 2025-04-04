@@ -6,10 +6,7 @@ import {
 	publicClientWSS,
 } from './clients.ts';
 import { type Hex } from 'viem';
-import { AGIQueueManager } from './AGIQueueManager.ts';
-
-// Create a single instance
-const agiQueueManager = new AGIQueueManager();
+import { agiQueueManager } from './AGIQueueManager.ts';
 
 // call the contract function getProcessedAGIs
 const BATCH_SIZE = 50;
@@ -102,6 +99,7 @@ const processPendingAGIs = async (startId = 1) => {
 		logger.info('TASK SUMMARY');
 		logger.item(`Total tasks in system: ${totalTasksAmount.toString()}`);
 		logger.item(`Total processed agis: ${processedAGIsAmount.toString()}`);
+		logger.item(`Total failed swap tasks: ${agiQueueManager.logFailedSwapTaskCount().toString()}`);
 
 		const pendingAGIsAmount = totalTasksAmount - processedAGIsAmount;
 		logger.warning(`${pendingAGIsAmount.toString()} unprocessed agis found in the system`);
