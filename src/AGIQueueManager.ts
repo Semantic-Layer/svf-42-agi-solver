@@ -234,24 +234,26 @@ export class AGIQueueManager {
 			const retryCount = (this.retryCounts.get(agiId) || 0) + 1;
 			this.retryCounts.set(agiId, retryCount);
 
-			if (retryCount >= this.MAX_RETRIES) {
-				const errorMessage = `Max retries (${this.MAX_RETRIES}) exceeded for AGI ${agiId}, removing from queue`;
+			const isSwapError = error instanceof SwapError || error instanceof NoRoutesFoundError;
+
+			// Only check max retries for swap-related errors
+			if (isSwapError && retryCount >= this.MAX_RETRIES) {
+				const errorMessage = `Max retries (${this.MAX_RETRIES}) exceeded for swap-related error on AGI ${agiId}, removing from queue`;
 				logger.error(errorMessage);
-				if (error instanceof NoRoutesFoundError || error instanceof SwapError) {
-					logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
-				}
+				logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
 				this.removeFromQueue(agiId);
 				return;
 			}
 
-			const delay =
-				error instanceof NoRoutesFoundError || error instanceof SwapError
-					? this.SWAP_RETRY_DELAY
-					: this.RETRY_DELAY;
+			// Determine delay based on error type
+			const delay = isSwapError ? this.SWAP_RETRY_DELAY : this.RETRY_DELAY;
 
-			logger.error(
-				`Error processing AGI ${agiId}, retry ${retryCount}/${this.MAX_RETRIES} in ${delay / 1000}s`
-			);
+			// For non-swap errors, don't show the max retries in the log message
+			const retryMessage = isSwapError
+				? `Error processing AGI ${agiId}, retry ${retryCount}/${this.MAX_RETRIES} in ${delay / 1000}s`
+				: `Error processing AGI ${agiId}, retry ${retryCount} in ${delay / 1000}s`;
+
+			logger.error(retryMessage);
 			logger.item(`error: ${error}`);
 
 			await new Promise(resolve => setTimeout(resolve, delay));
