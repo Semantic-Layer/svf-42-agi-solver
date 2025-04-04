@@ -73,7 +73,7 @@ export async function defaultSwap({
 	fromAmount,
 	fromAddress,
 	options = {
-		slippage: 0.5,
+		slippage: 0.05, // 5%
 		order: 'RECOMMENDED',
 	},
 }: DefaultSwapParams) {

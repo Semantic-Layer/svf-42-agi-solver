@@ -254,7 +254,7 @@ export class AGIQueueManager {
 					: this.RETRY_DELAY;
 
 			logger.error(
-				`Error processing AGI ${agiId}, retry ${retryCount}/${this.MAX_RETRIES} in ${delay}ms`
+				`Error processing AGI ${agiId}, retry ${retryCount}/${this.MAX_RETRIES} in ${delay / 1000}s`
 			);
 			logger.item(`error: ${error}`);
 
