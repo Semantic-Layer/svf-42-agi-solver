@@ -235,14 +235,18 @@ export class AGIQueueManager {
 			this.retryCounts.set(agiId, retryCount);
 
 			if (retryCount >= this.MAX_RETRIES) {
-				logger.error(
-					`Max retries (${this.MAX_RETRIES}) exceeded for AGI ${agiId}, removing from queue`
-				);
+				const errorMessage = `Max retries (${this.MAX_RETRIES}) exceeded for AGI ${agiId}, removing from queue`;
+				logger.error(errorMessage);
+				if (
+					error instanceof NoRoutesFoundError ||
+					(error instanceof Error && error.message.includes('swap'))
+				) {
+					logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
+				}
 				this.removeFromQueue(agiId);
 				return;
 			}
 
-			// Use SWAP_RETRY_DELAY for both NoRoutesFoundError and other swap-related errors
 			const delay =
 				error instanceof NoRoutesFoundError ||
 				(error instanceof Error && error.message.includes('swap'))

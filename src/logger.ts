@@ -40,12 +40,26 @@ const loggerTransports = {
 			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
 	}),
+	failedSwapFile: new winston.transports.File({
+		filename: 'logs/failed_swaps.log',
+		level: 'error',
+		format: winston.format.combine(
+			winston.format.timestamp(),
+			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
+		),
+	}),
 };
 
 // create logger instance
 const winstonLogger = winston.createLogger({
-	levels: winston.config.npm.levels, // ensure using default levels
+	levels: winston.config.npm.levels,
 	transports: [loggerTransports.console, loggerTransports.successFile, loggerTransports.errorFile],
+});
+
+// create separate logger for failed swaps
+const failedSwapLogger = winston.createLogger({
+	levels: winston.config.npm.levels,
+	transports: [loggerTransports.failedSwapFile],
 });
 
 // custom logger, keep colors and adapt to file output
@@ -97,6 +111,12 @@ export const logger = {
 			message: logMessage,
 			consoleMessage: `${colors.red}${logMessage}${colors.reset}`,
 		});
+	},
+
+	failedSwap: (message: string) => {
+		const logMessage = `[SVF:42 SOLVER] ${message}`;
+		failedSwapLogger.error(logMessage);
+		console.log(`${colors.red}${logMessage}${colors.reset}`);
 	},
 
 	item: (message: string) => {
