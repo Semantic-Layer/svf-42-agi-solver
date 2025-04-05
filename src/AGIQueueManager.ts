@@ -237,7 +237,7 @@ export class AGIQueueManager {
 				const secondsUntilNext = Math.ceil((delay - timeSinceLastAttempt) / 1000);
 				logger.info(`Skipping task ${agiId} - will be processed in ${secondsUntilNext}s`);
 				logger.item(
-					`Time since last attempt: ${timeSinceLastAttempt}ms, required delay: ${delay}ms`
+					`Time since last attempt: ${timeSinceLastAttempt}ms, required delay: ${delay / 1000}s`
 				);
 				return;
 			}
