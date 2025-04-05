@@ -103,10 +103,23 @@ export class AGIQueueManager {
 	private orderStatus: Map<number, ExtendedOrderStatus>;
 	/** Maps AGI IDs to their retry counts */
 	private retryCounts: Map<number, number>;
+	/** Maps AGI IDs to their last attempt timestamp */
+	private lastAttemptTime: Map<number, number>;
+	/** Maps AGI IDs to their last delay used */
+	private lastDelay: Map<number, number>;
+	/**
+	 * Tracks the interval ID for queue checking.
+	 * We need this to:
+	 * 1. Prevent multiple intervals from running simultaneously
+	 * 2. Stop the interval when the queue is empty
+	 * 3. Clean up the interval properly to prevent memory leaks
+	 */
+	private checkIntervalId: NodeJS.Timeout | null = null;
 
 	private readonly RETRY_DELAY = 1000; // 1 second delay between retries
 	private readonly SWAP_RETRY_DELAY = 30000; // 30 seconds delay for swap retries
 	private readonly MAX_RETRIES = 3; // Maximum number of retries
+	private readonly CHECK_INTERVAL = 2000; // Check queue every second
 
 	constructor() {
 		this.swapResults = new Map();
@@ -114,6 +127,49 @@ export class AGIQueueManager {
 		this.isProcessing = false;
 		this.orderStatus = new Map();
 		this.retryCounts = new Map();
+		this.lastAttemptTime = new Map();
+		this.lastDelay = new Map();
+	}
+
+	/**
+	 * Starts the queue checking interval if not already running.
+	 *
+	 * This function:
+	 * 1. Checks if an interval is already running (checkIntervalId is null)
+	 * 2. If no interval is running:
+	 *    - Creates a new interval that runs every CHECK_INTERVAL (1 second)
+	 *    - The interval checks if:
+	 *      a. We're not currently processing (isProcessing is false)
+	 *      b. There are tasks in the queue (queue.length > 0)
+	 *    - If both conditions are met, starts processing tasks
+	 *    - If the queue becomes empty, stops the interval
+	 *
+	 * This ensures:
+	 * - Only one interval runs at a time
+	 * - Tasks are processed when possible
+	 * - Resources are freed when queue is empty
+	 * - We respect the CHECK_INTERVAL between checks
+	 */
+	private startQueueCheck() {
+		if (this.checkIntervalId === null) {
+			this.checkIntervalId = setInterval(() => {
+				if (!this.isProcessing && this.queue.length > 0) {
+					this.startProcessing().catch(error => {
+						logger.error(`Error in AGI processing loop: ${error}`);
+					});
+				} else if (this.queue.length === 0) {
+					// Stop the interval if queue is empty
+					this.stopQueueCheck();
+				}
+			}, this.CHECK_INTERVAL);
+		}
+	}
+
+	private stopQueueCheck() {
+		if (this.checkIntervalId !== null) {
+			clearInterval(this.checkIntervalId);
+			this.checkIntervalId = null;
+		}
 	}
 
 	/**
@@ -128,13 +184,8 @@ export class AGIQueueManager {
 		this.queue.push(agiId);
 		logger.info(`Added AGI ${agiId} to queue. Queue length: ${this.queue.length}`);
 
-		// Start processing if not already processing and queue is not empty
-		if (!this.isProcessing && this.queue.length > 0) {
-			// Handle the promise to prevent uncaught exceptions
-			this.startProcessing().catch(error => {
-				logger.error(`Error in AGI processing loop: ${error}`);
-			});
-		}
+		// Start checking the queue if not already running
+		this.startQueueCheck();
 	}
 
 	/**
@@ -160,14 +211,10 @@ export class AGIQueueManager {
 		this.isProcessing = true;
 
 		try {
-			while (this.queue.length > 0) {
-				const nextAgiId = this.queue[0]; // Peek at first item
-				this.queue.push(this.queue.shift()!); // Move to end of queue before processing
-				try {
-					await this.processAGI(nextAgiId);
-				} catch (error) {
-					logger.error(`Error processing AGI ${nextAgiId}: ${error}`);
-				}
+			if (this.queue.length > 0) {
+				const nextAgiId = this.queue[0]; // Get first item
+				this.queue.push(this.queue.shift()!); // Move to end of queue
+				await this.processAGI(nextAgiId);
 			}
 		} finally {
 			this.isProcessing = false;
@@ -180,6 +227,22 @@ export class AGIQueueManager {
 	 * 0 (PendingDispense) -> 1 (DispensedPendingProceeds) -> 3 (SwapInitiated) -> 4 (SwapCompleted) -> 2 (ProceedsReceived)
 	 */
 	private async processAGI(agiId: number) {
+		// Check if enough time has passed since last attempt
+		const lastAttempt = this.lastAttemptTime.get(agiId);
+		if (lastAttempt) {
+			const timeSinceLastAttempt = Date.now() - lastAttempt;
+			const delay = this.lastDelay.get(agiId) || this.RETRY_DELAY;
+
+			if (timeSinceLastAttempt < delay) {
+				const secondsUntilNext = Math.ceil((delay - timeSinceLastAttempt) / 1000);
+				logger.info(`Skipping task ${agiId} - will be processed in ${secondsUntilNext}s`);
+				logger.item(
+					`Time since last attempt: ${timeSinceLastAttempt}ms, required delay: ${delay}ms`
+				);
+				return;
+			}
+		}
+
 		logger.info(`Processing AGI ${agiId}`);
 
 		try {
@@ -230,6 +293,11 @@ export class AGIQueueManager {
 					await this.handleProceedsReceived(agiId);
 					break;
 			}
+
+			// If we get here, the task was successful
+			// Set a standard delay for next attempt
+			this.lastAttemptTime.set(agiId, Date.now());
+			this.lastDelay.set(agiId, this.RETRY_DELAY);
 		} catch (error) {
 			const retryCount = (this.retryCounts.get(agiId) || 0) + 1;
 			this.retryCounts.set(agiId, retryCount);
@@ -256,8 +324,12 @@ export class AGIQueueManager {
 			logger.error(retryMessage);
 			logger.item(`error: ${error}`);
 
-			await new Promise(resolve => setTimeout(resolve, delay));
-			throw error;
+			// Record the current time and delay for next attempt
+			this.lastAttemptTime.set(agiId, Date.now());
+			this.lastDelay.set(agiId, delay);
+
+			// No need for setTimeout - the interval will pick up the task when ready
+			return;
 		}
 	}
 
@@ -407,6 +479,13 @@ export class AGIQueueManager {
 			this.retryCounts.delete(agiId);
 			this.orderStatus.delete(agiId);
 			this.swapResults.delete(agiId);
+			this.lastAttemptTime.delete(agiId);
+			this.lastDelay.delete(agiId);
+
+			// Stop checking if queue is empty
+			if (this.queue.length === 0) {
+				this.stopQueueCheck();
+			}
 		}
 	}
 
