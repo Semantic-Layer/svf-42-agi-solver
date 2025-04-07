@@ -8,6 +8,7 @@
  *    - Items are added to queue via add(agiId)
  *    - When processing starts, items are moved to end of queue before processing
  *    - Items are only removed from queue when fully completed (status 2)
+ *    - Tasks that have failed swaps after MAX_RETRIES attempts will be skipped and removed from queue
  *
  * 2. Status Flow:
  *    a. Initial State (0 - PendingDispense):
