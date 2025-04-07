@@ -48,13 +48,14 @@ export async function swap({
 		fromAddress: fromAddress,
 		options: options,
 	});
-	logger.info(`looking for routes on ${chainId}`);
-	logger.item(`fromToken: ${fromToken}`);
-	logger.item(`toToken: ${toToken}`);
-	logger.item(`fromAmount: ${fromAmount}`);
-	logger.item(`fromAmount in ether: ${formatEther(BigInt(fromAmount))}`);
-	logger.item(`fromAddress: ${fromAddress}`);
-	logger.item(`options: ${JSON.stringify(options)}`);
+	logger.table('LiFi Routes', {
+		chainId: chainId,
+		fromToken: fromToken,
+		toToken: toToken,
+		amount: `${formatEther(BigInt(fromAmount))} ether`,
+		fromAddress: fromAddress,
+		options: options,
+	});
 
 	if (!result.routes.length) {
 		throw new NoRoutesFoundError();
