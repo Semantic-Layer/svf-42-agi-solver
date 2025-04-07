@@ -54,7 +54,7 @@ export async function swap({
 		toToken: toToken,
 		amount: `${formatEther(BigInt(fromAmount))} ether`,
 		fromAddress: fromAddress,
-		options: options,
+		options: `options: ${JSON.stringify(options, null, 2)}`,
 	});
 
 	if (!result.routes.length) {
@@ -62,8 +62,9 @@ export async function swap({
 	}
 
 	logger.info(`routes found: ${result.routes.length}`);
-	logger.item(`best route: ${result.routes[0]}`);
+	logger.item(`best route: ${JSON.stringify(result.routes[0], null, 2)}`);
 	logger.item(`best route steps: ${result.routes[0].steps.length}`);
+	logger.item(`options: ${JSON.stringify(options, null, 2)}`);
 
 	const route = result.routes[0];
 

@@ -95,11 +95,15 @@ const processPendingAGIs = async (startId = 1) => {
 			return;
 		}
 
+		const { count, ids } = agiQueueManager.getfailedSwapTask();
+
 		// Log summary
-		logger.info('TASK SUMMARY');
-		logger.item(`Total tasks in system: ${totalTasksAmount.toString()}`);
-		logger.item(`Total processed agis: ${processedAGIsAmount.toString()}`);
-		logger.item(`Total failed swap tasks: ${agiQueueManager.logFailedSwapTaskCount().toString()}`);
+		logger.table('TASK SUMMARY', {
+			totalTasks: totalTasksAmount.toString(),
+			processedAGIs: processedAGIsAmount.toString(),
+			failedSwapTasksCount: count.toString(),
+			failedSwapTasksIds: ids.length > 0 ? ids.join(', ') : 'None',
+		});
 
 		const pendingAGIsAmount = totalTasksAmount - processedAGIsAmount;
 		logger.warning(`${pendingAGIsAmount.toString()} unprocessed agis found in the system`);
