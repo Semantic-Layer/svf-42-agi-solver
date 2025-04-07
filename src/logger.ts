@@ -129,6 +129,89 @@ export const logger = {
 		console.log(separator); // only output to console
 	},
 
+	table: (title: string, data: any) => {
+		const maxKeyLength = Math.max(...Object.keys(data).map(key => key.length));
+		const maxColumnWidth = 80;
+		const valueWidth = Math.min(maxColumnWidth, process.stdout.columns - maxKeyLength - 7);
+
+		const wrapText = (text: string, width: number): string[] => {
+			const words = String(text).split(' ');
+			const lines = [];
+			let currentLine = '';
+
+			words.forEach(word => {
+				if (currentLine.length + word.length + 1 <= width) {
+					currentLine += (currentLine.length === 0 ? '' : ' ') + word;
+				} else {
+					if (currentLine.length > 0) lines.push(currentLine);
+					if (word.length > width) {
+						while (word.length > width) {
+							lines.push(word.slice(0, width));
+							word = word.slice(width);
+						}
+						currentLine = word;
+					} else {
+						currentLine = word;
+					}
+				}
+			});
+			if (currentLine.length > 0) lines.push(currentLine);
+			return lines;
+		};
+
+		const totalWidth = maxKeyLength + valueWidth + 5;
+		const line = '─'.repeat(totalWidth);
+
+		const tableLines = [];
+		const consoleTableLines = [];
+		consoleTableLines.push(`${colors.blue}┌${line}┐${colors.reset}`);
+		tableLines.push(`┌${line}┐`);
+		if (title) {
+			const titlePadding = Math.floor((totalWidth - title.length) / 2);
+			const titleLine =
+				' '.repeat(titlePadding) + title + ' '.repeat(totalWidth - title.length - titlePadding);
+			consoleTableLines.push(
+				`${colors.blue}│${colors.cyan}${titleLine}${colors.blue}│${colors.reset}`
+			);
+			tableLines.push(`│${titleLine}│`);
+			consoleTableLines.push(`${colors.blue}├${line}┤${colors.reset}`);
+			tableLines.push(`├${line}┤`);
+		}
+
+		Object.entries(data).forEach(([key, value], index, array) => {
+			const keyPadded = key.padEnd(maxKeyLength);
+			const wrappedLines = wrapText(String(value), valueWidth);
+
+			const firstLinePadded = wrappedLines[0].padEnd(valueWidth, ' ');
+			consoleTableLines.push(
+				`${colors.blue}│${colors.reset} ${keyPadded} ${colors.blue}│${colors.reset} ${firstLinePadded} ${colors.blue}│${colors.reset}`
+			);
+			tableLines.push(`│ ${keyPadded} │ ${firstLinePadded} │`);
+
+			for (let i = 1; i < wrappedLines.length; i++) {
+				const linePadded = wrappedLines[i].padEnd(valueWidth, ' ');
+				consoleTableLines.push(
+					`${colors.blue}│${colors.reset} ${' '.repeat(maxKeyLength)} ${colors.blue}│${colors.reset} ${linePadded} ${colors.blue}│${colors.reset}`
+				);
+				tableLines.push(`│ ${' '.repeat(maxKeyLength)} │ ${linePadded} │`);
+			}
+
+			if (index < array.length - 1) {
+				consoleTableLines.push(`${colors.blue}├${line}┤${colors.reset}`);
+				tableLines.push(`├${line}┤`);
+			}
+		});
+
+		consoleTableLines.push(`${colors.blue}└${line}┘${colors.reset}`);
+		tableLines.push(`└${line}┘`);
+
+		// Log the table to the success log file
+		winstonLogger.info({
+			message: '\n' + tableLines.join('\n'),
+			consoleMessage: '\n' + consoleTableLines.join('\n'), // Print the table with colors to console
+		});
+	},
+
 	info: (message: string) => {
 		const logMessage = `[SVF:42 SOLVER] ${message}`;
 		winstonLogger.info({
