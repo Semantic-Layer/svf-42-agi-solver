@@ -128,7 +128,7 @@ const processPendingAGIs = async (startId = 1) => {
 
 		for (const agiId of unprocessedAGIs) {
 			logger.info(`adding task #${agiId} to the queue`);
-			await agiQueueManager.add(agiId);
+			agiQueueManager.add(agiId);
 		}
 
 		logger.success(`All ${unprocessedAGIs.length} tasks added to the queue`);
@@ -163,7 +163,7 @@ export default async function startListener() {
 						logger.item(`Asset to Buy: ${assetToBuy}`);
 						logger.item(`Order Status: ${orderStatus}`);
 
-						await agiQueueManager.add(orderId);
+						agiQueueManager.add(orderId);
 					} catch (error) {
 						logger.error('ERROR PROCESSING EVENT');
 						logger.item('Error processing YeetCreated event:');
