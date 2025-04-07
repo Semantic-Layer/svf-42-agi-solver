@@ -9,6 +9,7 @@ import {
 	type PublicClient,
 	type WebSocketTransportConfig,
 	type Chain,
+	Abi,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { anvil, base, baseSepolia } from 'viem/chains';
@@ -33,7 +34,7 @@ interface BlockchainServices {
 	account: PrivateKeyAccount;
 	chains: Chain[];
 	chainId: number;
-	agiContractABI: any;
+	agiContractABI: Abi;
 	agiContractAddress: string;
 }
 

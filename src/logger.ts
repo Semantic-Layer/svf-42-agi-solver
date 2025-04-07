@@ -121,6 +121,11 @@ const failedSwapLogger = winston.createLogger({
 	transports: [loggerTransports.failedSwapFile],
 });
 
+type TableData = {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	[key: string]: any;
+};
+
 // custom logger, keep colors and adapt to file output
 export const logger = {
 	separator: () => {
@@ -129,7 +134,7 @@ export const logger = {
 		console.log(separator); // only output to console
 	},
 
-	table: (title: string, data: any) => {
+	table: (title: string, data: TableData) => {
 		const maxKeyLength = Math.max(...Object.keys(data).map(key => key.length));
 		const maxColumnWidth = 80;
 		const valueWidth = Math.min(maxColumnWidth, process.stdout.columns - maxKeyLength - 7);
