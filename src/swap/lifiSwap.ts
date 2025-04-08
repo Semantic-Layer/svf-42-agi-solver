@@ -31,14 +31,15 @@ createConfig({
 	],
 });
 
-export async function swap({
-	chainId,
-	fromToken,
-	toToken,
-	fromAmount,
-	fromAddress,
-	options,
-}: SwapParams) {
+async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, options }: SwapParams) {
+	logger.table('LiFi Routes', {
+		chainId: chainId,
+		fromToken: fromToken,
+		toToken: toToken,
+		amount: `${formatEther(BigInt(fromAmount))} ether`,
+		fromAddress: fromAddress,
+		options: `${JSON.stringify(options)}`,
+	});
 	const result = await getRoutes({
 		fromChainId: chainId,
 		toChainId: chainId,
@@ -47,14 +48,6 @@ export async function swap({
 		fromAmount: fromAmount,
 		fromAddress: fromAddress,
 		options: options,
-	});
-	logger.table('LiFi Routes', {
-		chainId: chainId,
-		fromToken: fromToken,
-		toToken: toToken,
-		amount: `${formatEther(BigInt(fromAmount))} ether`,
-		fromAddress: fromAddress,
-		options: `options: ${JSON.stringify(options, null, 2)}`,
 	});
 
 	if (!result.routes.length) {
