@@ -202,8 +202,8 @@ contract Mock13 is Owned {
         external
         onlyAIOrOwnerOrMaster42
         noZeroValue(amountToSell)
-        onlyWhitelistToken(assetToSell)
-        onlyWhitelistToken(assetToBuy)
+        ///onlyWhitelistToken(assetToSell)
+        ///onlyWhitelistToken(assetToBuy)
         assignTokenIndex(assetToSell, assetToBuy)
     {
         require(assetToSell != address(0) || assetToBuy != address(0), "Invalid asset to sell or buy");
@@ -339,7 +339,7 @@ contract Mock13 is Owned {
     function checkLimits(bool _isSell, uint256 _amount, address _asset)
         external
         view
-        onlyWhitelistToken(_asset)
+        ///onlyWhitelistToken(_asset)
         returns (CheckStatus _status)
     {
         uint256 currentDay = block.timestamp / 1 days;
