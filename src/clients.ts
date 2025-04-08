@@ -2,95 +2,145 @@ import {
 	createPublicClient,
 	webSocket,
 	http,
+	PrivateKeyAccount,
 	createWalletClient,
 	type WalletClient,
 	type Hex,
 	type PublicClient,
 	type WebSocketTransportConfig,
+	type Chain,
+	Abi,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { anvil } from 'viem/chains';
+import { anvil, base, baseSepolia } from 'viem/chains';
 import 'dotenv/config';
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './logger.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+interface ChainConfig {
+	chainId: number;
+	rpcUrl: string;
+	wssRpcUrl: string;
+	privateKey: Hex;
+	agiContractAddress: string;
+}
 
-const AGI = JSON.parse(
-	fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
-);
+interface BlockchainServices {
+	publicClientHTTP: PublicClient;
+	publicClientWSS: PublicClient;
+	walletClient: WalletClient;
+	account: PrivateKeyAccount;
+	chains: Chain[];
+	chainId: number;
+	agiContractABI: Abi;
+	agiContractAddress: string;
+}
 
-export const agiContractABI = AGI.abi;
+/**
+ * Initialize chain configuration from environment variables
+ */
+function initializeConfig(): ChainConfig {
+	const { CHAIN_ID, RPC, WSS_RPC, PRIVATE_KEY } = process.env;
 
-const chainId = parseInt(
-	process.env.CHAIN_ID ||
-		(() => {
-			throw new Error('CHAIN_ID environment variable is required.');
-		})()
-);
-
-// get contract address
-const coreDeploymentData = JSON.parse(
-	fs.readFileSync(path.join(__dirname, `../contracts/deployments/agi/${chainId}.json`), 'utf8')
-);
-export const agiContractAddress = coreDeploymentData.addresses.agi;
-
-const rpc =
-	process.env.RPC ||
-	(() => {
-		throw new Error('RPC environment variable is required.');
-	})();
-
-const wssRpc =
-	process.env.WSS_RPC ||
-	(() => {
-		throw new Error('WSS_RPC environment variable is required.');
-	})();
-
-const privateKey =
-	process.env.PRIVATE_KEY ||
-	(() => {
-		throw new Error('PRIVATE_KEY environment variable is required.');
-	})();
-
-const account = privateKeyToAccount(privateKey as Hex);
-
-logger.info(`Account: ${account.address}`);
-
-// get public client based on chain id
-const getPublicClient = (wss: boolean): PublicClient => {
-	if (wss) {
-		const wsConfig = {
-			keepAlive: true,
-			reconnect: true,
-		} satisfies WebSocketTransportConfig;
-
-		// @ts-expect-error - Known viem type issue with account property
-		return createPublicClient({
-			chain: anvil,
-			transport: webSocket(wssRpc, wsConfig),
-		});
-	} else {
-		// @ts-expect-error - Known viem type issue with account property
-		return createPublicClient({
-			chain: anvil,
-			transport: http(rpc),
-		});
+	if (!CHAIN_ID || !RPC || !WSS_RPC || !PRIVATE_KEY) {
+		throw new Error('Missing required chain configuration parameters');
 	}
-};
 
-/// get wallet client based on chain id
-const getWalletClient = (): WalletClient =>
-	createWalletClient({
-		account,
-		chain: anvil,
-		transport: http(rpc),
+	const chainId = parseInt(CHAIN_ID);
+	const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+	// Load contract deployment data
+	const coreDeploymentData = JSON.parse(
+		fs.readFileSync(path.join(__dirname, `../contracts/deployments/agi/${chainId}.json`), 'utf8')
+	);
+
+	return {
+		chainId,
+		rpcUrl: RPC,
+		wssRpcUrl: WSS_RPC,
+		privateKey: PRIVATE_KEY as Hex,
+		agiContractAddress: coreDeploymentData.addresses.agi,
+	};
+}
+
+/**
+ * Initialize blockchain clients and contract configurations
+ */
+function initializeClients(): BlockchainServices {
+	const config = initializeConfig();
+	const chains = [base, baseSepolia, anvil];
+
+	// Initialize chain configuration
+	const chainConfig = {
+		chain: chains.find(chain => chain.id === config.chainId) as Chain,
+	};
+
+	// Initialize account
+	const account = privateKeyToAccount(config.privateKey);
+	logger.info(`Account: ${account.address}`);
+
+	// Load contract ABI
+	const __dirname = path.dirname(fileURLToPath(import.meta.url));
+	const AGI = JSON.parse(
+		fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
+	);
+
+	// Initialize public clients
+	const publicClientHTTP = createPublicClient({
+		...chainConfig,
+		transport: http(config.rpcUrl),
 	});
 
-export const publicClientHTTP = getPublicClient(false);
-export const publicClientWSS = getPublicClient(true);
-export const walletClient = getWalletClient();
+	const wsConfig: WebSocketTransportConfig = {
+		keepAlive: true,
+		reconnect: true,
+	};
+
+	const publicClientWSS = createPublicClient({
+		...chainConfig,
+		transport: webSocket(config.wssRpcUrl, wsConfig),
+	});
+
+	// Initialize wallet client
+	const walletClient = createWalletClient({
+		account,
+		...chainConfig,
+		transport: http(config.rpcUrl),
+	});
+
+	return {
+		publicClientHTTP,
+		publicClientWSS,
+		walletClient,
+		account,
+		chains,
+		chainId: config.chainId,
+		agiContractABI: AGI.abi,
+		agiContractAddress: config.agiContractAddress,
+	};
+}
+
+// Initialize and export blockchain clients and configurations
+const {
+	publicClientHTTP,
+	publicClientWSS,
+	walletClient,
+	account,
+	chains,
+	chainId,
+	agiContractABI,
+	agiContractAddress,
+}: BlockchainServices = initializeClients();
+
+export {
+	publicClientHTTP,
+	publicClientWSS,
+	walletClient,
+	account,
+	chains,
+	chainId,
+	agiContractABI,
+	agiContractAddress,
+};

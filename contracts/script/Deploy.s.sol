@@ -12,6 +12,10 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 contract DeployScript is Script {
     using Strings for *;
 
+    // BASE MAINNET TOKENS
+    address constant SVF_TOKEN = 0x637043af1A83e83e5A7D2BAcA4ABD1aA6c39E026;
+    address constant TOKENC = 0x96A98D61bCcb783160D296F107c30D0e90b2Abea;
+
     struct DeploymentData {
         address agiContract;
         address tokenA;
@@ -24,9 +28,16 @@ contract DeployScript is Script {
     // misc
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey;
+        if (block.chainid == 8453) {
+            // Base Mainnet
+            deployerPrivateKey = vm.envUint("BASE_DEPLOYER_PRIVATE_KEY");
+        } else {
+            deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        }
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer:", deployer);
+        console.log("Chain ID:", block.chainid);
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy TokenA and TokenB
@@ -45,6 +56,7 @@ contract DeployScript is Script {
         // Set token allowances
         tokenA.approve(address(mock13), type(uint256).max);
         tokenB.approve(address(mock13), type(uint256).max);
+        // TokenA(SVF_TOKEN).approve(address(mock13), type(uint256).max);
 
         // Log the addresses
         console.log("TokenA deployed to:", address(tokenA));

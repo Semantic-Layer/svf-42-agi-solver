@@ -8,6 +8,7 @@
  *    - Items are added to queue via add(agiId)
  *    - When processing starts, items are moved to end of queue before processing
  *    - Items are only removed from queue when fully completed (status 2)
+ *    - Tasks that have failed swaps after MAX_RETRIES attempts will be skipped and removed from queue
  *
  * 2. Status Flow:
  *    a. Initial State (0 - PendingDispense):
@@ -50,18 +51,24 @@
 
 import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
-import { mockSwap } from './mockSwap.ts';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
+import { defaultSwap } from './swap/lifiSwap.ts';
+import { checkTransactionReceipt } from './utils.ts';
+import { SwapError } from './errors.ts';
 
 /**
  * Represents the result of a swap operation
  * @property agiId - The ID of the AGI that initiated the swap
- * @property amountToBuy - The amount of tokens to buy after the swap
+ * @property amountToBuy - The amount of tokens to buy after the swap (defaults to 0)
+ * @property status - The status of the swap operation (can be undefined)
+ * @property attemptCount - The number of attempts made for this swap
  */
 interface SwapResult {
-	agiId: number;
-	amountToBuy: number;
+	agiId?: number;
+	amountToBuy?: number;
+	status?: 'pending' | 'completed' | 'failed';
+	attemptCount?: number;
 }
 
 /**
@@ -95,14 +102,74 @@ export class AGIQueueManager {
 	private queue: number[];
 	/** Flag to prevent concurrent processing */
 	private isProcessing: boolean;
-	/** Maps AGI IDs to their extended status (combines contract and internal states) */
+	/** Maps AGI IDs to their extended status (combines contract and internal swap states) */
 	private orderStatus: Map<number, ExtendedOrderStatus>;
+	/** Maps AGI IDs to their last attempt timestamp */
+	private lastAttemptTime: Map<number, number>;
+	/** Maps AGI IDs to their last delay used */
+	private lastDelay: Map<number, number>;
+	/**
+	 * Tracks the interval ID for queue checking.
+	 * We need this to:
+	 * 1. Prevent multiple intervals from running simultaneously
+	 * 2. Stop the interval when the queue is empty
+	 * 3. Clean up the interval properly to prevent memory leaks
+	 */
+	private checkIntervalId: NodeJS.Timeout | null = null;
+
+	private readonly RETRY_DELAY = 1000; // 1 second delay between retries
+	private readonly SWAP_RETRY_DELAY = 30000; // 30 seconds delay for swap retries
+	private readonly MAX_RETRIES = 2; // Maximum number of retries
+	private readonly CHECK_INTERVAL = 2000; // Check queue every second
 
 	constructor() {
 		this.swapResults = new Map();
 		this.queue = [];
 		this.isProcessing = false;
 		this.orderStatus = new Map();
+		this.lastAttemptTime = new Map();
+		this.lastDelay = new Map();
+	}
+
+	/**
+	 * Starts the queue checking interval if not already running.
+	 *
+	 * This function:
+	 * 1. Checks if an interval is already running (checkIntervalId is null)
+	 * 2. If no interval is running:
+	 *    - Creates a new interval that runs every CHECK_INTERVAL (1 second)
+	 *    - The interval checks if:
+	 *      a. We're not currently processing (isProcessing is false)
+	 *      b. There are tasks in the queue (queue.length > 0)
+	 *    - If both conditions are met, starts processing tasks
+	 *    - If the queue becomes empty, stops the interval
+	 *
+	 * This ensures:
+	 * - Only one interval runs at a time
+	 * - Tasks are processed when possible
+	 * - Resources are freed when queue is empty
+	 * - We respect the CHECK_INTERVAL between checks
+	 */
+	private startQueueCheck() {
+		if (this.checkIntervalId === null) {
+			this.checkIntervalId = setInterval(() => {
+				if (!this.isProcessing && this.queue.length > 0) {
+					this.startProcessing().catch(error => {
+						logger.error(`Error in AGI processing loop: ${error}`);
+					});
+				} else if (this.queue.length === 0) {
+					// Stop the interval if queue is empty
+					this.stopQueueCheck();
+				}
+			}, this.CHECK_INTERVAL);
+		}
+	}
+
+	private stopQueueCheck() {
+		if (this.checkIntervalId !== null) {
+			clearInterval(this.checkIntervalId);
+			this.checkIntervalId = null;
+		}
 	}
 
 	/**
@@ -114,16 +181,18 @@ export class AGIQueueManager {
 			logger.warning(`AGI ${agiId} is already in queue`);
 			return;
 		}
+
+		// Check if task should be skipped due to max retries
+		if (this.shouldSkipTask(agiId)) {
+			logger.warning(`‼️Skipping adding AGI ${agiId} to queue - exceeded max retries`);
+			return;
+		}
+
 		this.queue.push(agiId);
 		logger.info(`Added AGI ${agiId} to queue. Queue length: ${this.queue.length}`);
 
-		// Start processing if not already processing and queue is not empty
-		if (!this.isProcessing && this.queue.length > 0) {
-			// Handle the promise to prevent uncaught exceptions
-			this.startProcessing().catch(error => {
-				logger.error(`Error in AGI processing loop: ${error}`);
-			});
-		}
+		// Start checking the queue if not already running
+		this.startQueueCheck();
 	}
 
 	/**
@@ -149,14 +218,10 @@ export class AGIQueueManager {
 		this.isProcessing = true;
 
 		try {
-			while (this.queue.length > 0) {
-				const nextAgiId = this.queue[0]; // Peek at first item
-				this.queue.push(this.queue.shift()!); // Move to end of queue before processing
-				try {
-					await this.processAGI(nextAgiId);
-				} catch (error) {
-					logger.error(`Error processing AGI ${nextAgiId}: ${error}`);
-				}
+			if (this.queue.length > 0) {
+				const nextAgiId = this.queue[0]; // Get first item
+				this.queue.push(this.queue.shift()!); // Move to end of queue
+				await this.processAGI(nextAgiId);
 			}
 		} finally {
 			this.isProcessing = false;
@@ -164,12 +229,49 @@ export class AGIQueueManager {
 	}
 
 	/**
-	 * Processes a single AGI through its lifecycle.
-	 * Status transitions:
-	 * 0 (PendingDispense) -> 1 (DispensedPendingProceeds) -> 3 (SwapInitiated) -> 4 (SwapCompleted) -> 2 (ProceedsReceived)
+	 * Checks if a task should be skipped due to exceeding max retries
+	 * @param agiId - The ID of the AGI to check
+	 * @returns true if the task should be skipped, false otherwise
+	 */
+	private shouldSkipTask(agiId: number): boolean {
+		const swapResult = this.swapResults.get(agiId);
+		if (swapResult?.status === 'failed' && (swapResult.attemptCount || 0) >= this.MAX_RETRIES) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Processes a single AGI task.
+	 * Handles the entire lifecycle of an AGI task including:
+	 * - Checking if enough time has passed since last attempt
+	 * - Processing the task
+	 * - Handling errors and retries
+	 * - Recording swap results
+	 * - Managing task removal from queue
 	 */
 	private async processAGI(agiId: number) {
-		logger.info(`Processing AGI ${agiId}`);
+		// Check if task should be skipped due to max retries
+		if (this.shouldSkipTask(agiId)) {
+			logger.warning(`Skip processing AGI ${agiId} - exceeded max retries (${this.MAX_RETRIES})`);
+			return;
+		}
+
+		// Check if enough time has passed since last attempt
+		const lastAttempt = this.lastAttemptTime.get(agiId) || 0;
+		const timeSinceLastAttempt = Date.now() - lastAttempt;
+		const requiredDelay = this.lastDelay.get(agiId) || this.RETRY_DELAY;
+
+		if (timeSinceLastAttempt < requiredDelay) {
+			const secondsUntilNextAttempt = Math.ceil((requiredDelay - timeSinceLastAttempt) / 1000);
+			logger.warning(
+				`Skipping AGI ${agiId} - waiting ${secondsUntilNextAttempt}s (${timeSinceLastAttempt / 1000}s since last attempt, need ${requiredDelay / 1000}s)`
+			);
+			return;
+		}
+
+		// Record this attempt time
+		this.lastAttemptTime.set(agiId, Date.now());
 
 		try {
 			// Get current state from contract
@@ -219,9 +321,43 @@ export class AGIQueueManager {
 					await this.handleProceedsReceived(agiId);
 					break;
 			}
+
+			// If we get here, the task was successful
+			// Set a standard delay for next attempt
+			this.lastAttemptTime.set(agiId, Date.now());
+			this.lastDelay.set(agiId, this.RETRY_DELAY);
 		} catch (error) {
-			logger.error(`Error processing AGI ${agiId}: ${error}`);
-			throw error;
+			const swapResult = this.swapResults.get(agiId);
+			const attemptCount = swapResult?.attemptCount || 0;
+			const isSwapError = error instanceof SwapError;
+
+			// Only check max retries for swap-related errors
+			if (this.shouldSkipTask(agiId)) {
+				logger.error(
+					`Max retries (${this.MAX_RETRIES}) exceeded for swap-related error on AGI ${agiId}, removing from queue`
+				);
+				logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
+				this.removeFromQueue(agiId);
+				return;
+			}
+
+			// Determine delay based on error type
+			const delay = isSwapError ? this.SWAP_RETRY_DELAY : this.RETRY_DELAY;
+
+			// For non-swap errors, don't show the max retries in the log message
+			const retryMessage = isSwapError
+				? `Error processing AGI ${agiId}, retry ${attemptCount}/${this.MAX_RETRIES} in ${delay / 1000}s`
+				: `Error processing AGI ${agiId}, retry ${attemptCount} in ${delay / 1000}s`;
+
+			logger.error(retryMessage);
+			logger.item(`error: ${error}`);
+
+			// Record the current time and delay for next attempt
+			this.lastAttemptTime.set(agiId, Date.now());
+			this.lastDelay.set(agiId, delay);
+
+			// No need for setTimeout - the interval will pick up the task when ready
+			return;
 		}
 	}
 
@@ -247,10 +383,69 @@ export class AGIQueueManager {
 	 * - Performs swap and stores result
 	 */
 	private async handleSwapInitiated(agiId: number, agi: AgentGeneratedIntent) {
-		const amountToBuy = await mockSwap(agi.assetToSell, agi.amountToSell, agi.assetToBuy);
-		this.swapResults.set(agiId, { agiId, amountToBuy });
-		this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
-		logger.info(`AGI ${agiId} swap completed`);
+		// Check if swap is already in process
+		logger.info(`checking if swap is already in process`);
+		const existingSwap = this.swapResults.get(agiId);
+		if (existingSwap) {
+			logger.info(`swap already in process: ${existingSwap.status}`);
+			if (existingSwap.status === 'pending') {
+				logger.info(`AGI ${agiId} swap already in process, waiting...`);
+				return;
+			} else if (existingSwap.status === 'completed') {
+				logger.info(`AGI ${agiId} swap already completed`);
+				this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+				return;
+			} else if (this.shouldSkipTask(agiId)) {
+				logger.warning(
+					`Skip handleSwapInitiated: AGI ${agiId} failed after ${this.MAX_RETRIES} retries`
+				);
+				return;
+			}
+		} else {
+			// Initialize swap result for first attempt
+			logger.info(`initializing swap status as pending for AGI ${agiId}`);
+			this.swapResults.set(agiId, {
+				agiId,
+				status: 'pending',
+				attemptCount: 0,
+			});
+		}
+
+		const attemptCount = (existingSwap?.attemptCount || 0) + 1;
+
+		const currentSwap = this.swapResults.get(agiId);
+		if (currentSwap) {
+			this.swapResults.set(agiId, {
+				...currentSwap,
+				attemptCount,
+			});
+		}
+		try {
+			logger.info(`starting swap`);
+			const amountToBuy = await defaultSwap({
+				fromToken: agi.assetToSell,
+				toToken: agi.assetToBuy,
+				fromAmount: agi.amountToSell.toString(),
+				fromAddress: walletClient.account!.address,
+			});
+			this.swapResults.set(agiId, {
+				...currentSwap,
+				amountToBuy: parseInt(amountToBuy),
+				attemptCount: attemptCount,
+				status: 'completed',
+			});
+			this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
+			logger.info(`AGI ${agiId} swap completed`);
+		} catch (error) {
+			this.swapResults.set(agiId, {
+				...currentSwap,
+				amountToBuy: 0,
+				attemptCount: attemptCount,
+				status: 'failed',
+			});
+			logger.error(`AGI ${agiId} swap failed: ${error} at attempt ${attemptCount}`);
+			throw new SwapError(`Swap failed for AGI ${agiId} at attempt ${attemptCount}`, error);
+		}
 	}
 
 	/**
@@ -260,7 +455,7 @@ export class AGIQueueManager {
 	private async handleSwapCompleted(agiId: number) {
 		const swapResult = this.swapResults.get(agiId);
 		if (swapResult) {
-			await this.depositAsset(agiId, swapResult.amountToBuy);
+			await this.depositAsset(agiId, swapResult.amountToBuy ?? 0);
 			this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
 		}
 	}
@@ -294,10 +489,11 @@ export class AGIQueueManager {
 				args: [orderIndex],
 			});
 
-			await walletClient.writeContract(request);
-			logger.success(`txn success: withdrew asset for AGI ${orderIndex}`);
+			const hash = await walletClient.writeContract(request);
+			logger.item(`[Order ${orderIndex}]: withdraw txn hash: ${hash}`);
+			await checkTransactionReceipt(hash, `[withdraw txn hash for AGI ${orderIndex}]`);
 		} catch (error) {
-			logger.error(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
+			logger.subItem(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
 		}
 	}
@@ -319,11 +515,45 @@ export class AGIQueueManager {
 			});
 
 			await walletClient.writeContract(request);
-			logger.success(`txn success: deposited asset for AGI ${orderIndex}`);
-			this.swapResults.delete(orderIndex);
+			const hash = await walletClient.writeContract(request);
+			logger.item(`[Order ${orderIndex}]: deposit txn hash: ${hash}`);
+			await checkTransactionReceipt(hash, `[deposit txn hash for AGI ${orderIndex}]`);
 		} catch (error) {
-			logger.error(`Error depositing asset for AGI ${orderIndex}: ${error}`);
+			logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
 			throw error;
 		}
 	}
+
+	private removeFromQueue(agiId: number) {
+		const index = this.queue.indexOf(agiId);
+		if (index > -1) {
+			this.queue.splice(index, 1);
+			// this.orderStatus.delete(agiId);
+			// this.swapResults.delete(agiId);
+			this.lastAttemptTime.delete(agiId);
+			this.lastDelay.delete(agiId);
+
+			// Stop checking if queue is empty
+			if (this.queue.length === 0) {
+				this.stopQueueCheck();
+			}
+		}
+	}
+
+	/**
+	 * Returns the count and IDs of tasks that failed after reaching max retry attempts
+	 * @returns {count: number, ids: number[]} The count and IDs of tasks that failed after MAX_RETRIES attempts
+	 */
+	getfailedSwapTask() {
+		const failedTasks = Array.from(this.swapResults.entries())
+			.filter(([agiId]) => this.shouldSkipTask(agiId))
+			.map(([agiId]) => agiId);
+		return {
+			count: failedTasks.length,
+			ids: failedTasks,
+		};
+	}
 }
+
+// Create a single instance
+export const agiQueueManager = new AGIQueueManager();

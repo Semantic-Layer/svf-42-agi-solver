@@ -6,10 +6,7 @@ import {
 	publicClientWSS,
 } from './clients.ts';
 import { type Hex } from 'viem';
-import { AGIQueueManager } from './AGIQueueManager.ts';
-
-// Create a single instance
-const agiQueueManager = new AGIQueueManager();
+import { agiQueueManager } from './AGIQueueManager.ts';
 
 // call the contract function getProcessedAGIs
 const BATCH_SIZE = 50;
@@ -98,10 +95,15 @@ const processPendingAGIs = async (startId = 1) => {
 			return;
 		}
 
+		const { count, ids } = agiQueueManager.getfailedSwapTask();
+
 		// Log summary
-		logger.info('TASK SUMMARY');
-		logger.item(`Total tasks in system: ${totalTasksAmount.toString()}`);
-		logger.item(`Total processed agis: ${processedAGIsAmount.toString()}`);
+		logger.table('TASK SUMMARY', {
+			totalTasks: totalTasksAmount.toString(),
+			processedAGIs: processedAGIsAmount.toString(),
+			failedSwapTasksCount: count.toString(),
+			failedSwapTasksIds: ids.length > 0 ? ids.join(', ') : 'None',
+		});
 
 		const pendingAGIsAmount = totalTasksAmount - processedAGIsAmount;
 		logger.warning(`${pendingAGIsAmount.toString()} unprocessed agis found in the system`);
@@ -130,7 +132,7 @@ const processPendingAGIs = async (startId = 1) => {
 
 		for (const agiId of unprocessedAGIs) {
 			logger.info(`adding task #${agiId} to the queue`);
-			await agiQueueManager.add(agiId);
+			agiQueueManager.add(agiId);
 		}
 
 		logger.success(`All ${unprocessedAGIs.length} tasks added to the queue`);
@@ -165,7 +167,7 @@ export default async function startListener() {
 						logger.item(`Asset to Buy: ${assetToBuy}`);
 						logger.item(`Order Status: ${orderStatus}`);
 
-						await agiQueueManager.add(orderId);
+						agiQueueManager.add(orderId);
 					} catch (error) {
 						logger.error('ERROR PROCESSING EVENT');
 						logger.item('Error processing YeetCreated event:');
@@ -177,6 +179,9 @@ export default async function startListener() {
 		});
 
 		await processPendingAGIs();
+		setInterval(async () => {
+			await processPendingAGIs();
+		}, 30_000); // 30 seconds
 	} catch (error) {
 		console.error('Error starting listener', error);
 	}

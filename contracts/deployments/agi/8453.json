@@ -1,0 +1,16 @@
+{
+	"lastUpdate": {
+		"timestamp": "1743544783",
+		"block_number": "28377718"
+	},
+	"deployer": "0x1804c8ab1f12e6bbf3894d4083f33e07309d1f38",
+	"constructorArgs": {
+		"dao": "0xaf9cdbc5e417bfd2f5563bcacf9446ee51a8fa00",
+		"ai": "0xaf9cdbc5e417bfd2f5563bcacf9446ee51a8fa00"
+	},
+	"addresses": {
+		"agi": "0x7A1556B08a9d0791612360fa8a8A73DC0816A121",
+		"tokenA": "0x808e1163b025a9e41ed64a6cc3cb87594a358157",
+		"tokenB": "0x83cc3ecb3ca8987849a5ed91ecfdbec91ec6d6d3"
+	}
+}
