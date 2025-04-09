@@ -84,41 +84,12 @@ const loggerTransports = {
 			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
 		),
 	}),
-	failedSwapFile: new winston.transports.File({
-		filename: 'logs/failed_swaps.log',
-		level: 'error',
-		format: winston.format.combine(
-			winston.format.timestamp({
-				format: () => {
-					const now = new Date();
-					return now // `undefined`, will automatically use the system's default region
-						.toLocaleString(undefined, {
-							year: 'numeric',
-							month: '2-digit',
-							day: '2-digit',
-							hour: '2-digit',
-							minute: '2-digit',
-							second: '2-digit',
-							hour12: false,
-						})
-						.replace(/\//g, '-');
-				},
-			}),
-			winston.format.printf(({ timestamp, message }) => `[${timestamp}] ${message}`)
-		),
-	}),
 };
 
 // create logger instance
 const winstonLogger = winston.createLogger({
 	levels: winston.config.npm.levels,
 	transports: [loggerTransports.console, loggerTransports.successFile, loggerTransports.errorFile],
-});
-
-// create separate logger for failed swaps
-const failedSwapLogger = winston.createLogger({
-	levels: winston.config.npm.levels,
-	transports: [loggerTransports.failedSwapFile],
 });
 
 type TableData = {
@@ -258,12 +229,6 @@ export const logger = {
 			message: logMessage,
 			consoleMessage: `${colors.red}${logMessage}${colors.reset}`,
 		});
-	},
-
-	failedSwap: (message: string) => {
-		const logMessage = `[SVF:42 SOLVER] ${message}`;
-		failedSwapLogger.error(logMessage);
-		console.log(`${colors.red}${logMessage}${colors.reset}`);
 	},
 
 	item: (message: string) => {

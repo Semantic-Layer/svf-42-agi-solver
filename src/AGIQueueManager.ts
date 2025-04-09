@@ -56,6 +56,7 @@ import { logger } from './logger.ts';
 import { defaultSwap } from './swap/lifiSwap.ts';
 import { checkTransactionReceipt } from './utils.ts';
 import { SwapError } from './errors.ts';
+import { failedSwapsDB } from './db/failedSwapsDB.ts';
 
 /**
  * Represents the result of a swap operation
@@ -184,7 +185,7 @@ export class AGIQueueManager {
 
 		// Check if task should be skipped due to max retries
 		if (this.shouldSkipTask(agiId)) {
-			logger.warning(`‼️Skipping adding AGI ${agiId} to queue - exceeded max retries`);
+			logger.warning(`‼️  Skipping adding AGI ${agiId} to queue - exceeded max retries`);
 			return;
 		}
 
@@ -273,9 +274,11 @@ export class AGIQueueManager {
 		// Record this attempt time
 		this.lastAttemptTime.set(agiId, Date.now());
 
+		let agi: AgentGeneratedIntent | undefined;
+
 		try {
 			// Get current state from contract
-			const agi = (await publicClientHTTP.readContract({
+			agi = (await publicClientHTTP.readContract({
 				address: agiContractAddress as Hex,
 				abi: agiContractABI,
 				functionName: 'viewAGI',
@@ -336,7 +339,19 @@ export class AGIQueueManager {
 				logger.error(
 					`Max retries (${this.MAX_RETRIES}) exceeded for swap-related error on AGI ${agiId}, removing from queue`
 				);
-				logger.failedSwap(`AGI ${agiId} failed after ${this.MAX_RETRIES} retries: ${error}`);
+				const errorMessage = error instanceof Error ? error.message : String(error);
+
+				await failedSwapsDB.recordFailedSwap(
+					agiId,
+					errorMessage,
+					agi?.intentType ?? 0,
+					agi?.assetToSell ?? '0x0',
+					BigInt(agi?.amountToSell ?? 0),
+					agi?.assetToBuy ?? '0x0',
+					agi?.orderId ?? 0,
+					agi?.orderStatus ?? 0
+				);
+
 				this.removeFromQueue(agiId);
 				return;
 			}
@@ -457,6 +472,12 @@ export class AGIQueueManager {
 		if (swapResult) {
 			await this.depositAsset(agiId, swapResult.amountToBuy ?? 0);
 			this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
+
+			// If an attempt is successful, we should delete the corresponding failure record from the database.
+			// Ideally, every swap we perform should be successful, with no records of failure in the database,
+			// so attempting to delete data here would add extra search time.
+			// This is acceptable because the query time for a very small number of data entries is at the millisecond level.
+			await failedSwapsDB.tryDeleteFailedSwap(agiId);
 		}
 	}
 
