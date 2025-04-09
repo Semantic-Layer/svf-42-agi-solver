@@ -3,6 +3,7 @@ import { open } from 'sqlite';
 import path from 'path';
 
 class FailedSwapsDB {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private db: any;
 	private initialized: boolean = false;
 
