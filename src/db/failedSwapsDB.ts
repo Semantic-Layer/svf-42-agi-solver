@@ -1,10 +1,8 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Database from 'better-sqlite3';
 import path from 'path';
 
 class FailedSwapsDB {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private db: any;
+	private db!: Database.Database;
 	private initialized: boolean = false;
 
 	async init() {
@@ -13,14 +11,11 @@ class FailedSwapsDB {
 		// make sure logs directory exists
 		const dbPath = path.join(process.cwd(), 'logs', 'failed_swaps.db');
 
-		this.db = await open({
-			filename: dbPath,
-			driver: sqlite3.Database,
-		});
+		this.db = new Database(dbPath);
 
 		// create table (if not exists)
 		// we use TEXT for amount_to_sell in case the amount is too large
-		await this.db.exec(`
+		this.db.exec(`
             CREATE TABLE IF NOT EXISTS failed_swaps (
                 timestamp INTEGER NOT NULL,
                 agi_id INTEGER PRIMARY KEY,
@@ -55,19 +50,19 @@ class FailedSwapsDB {
 		await this.init();
 
 		try {
-			await this.db.run(
-				'INSERT OR IGNORE INTO failed_swaps (timestamp, agi_id, error_message, intent_type, asset_to_sell, amount_to_sell, asset_to_buy, order_id, order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-				[
-					Math.floor(Date.now() / 1000),
-					agiId,
-					errorMessage,
-					intentType,
-					assetToSell,
-					amountToSell.toString(),
-					assetToBuy,
-					Number(orderId),
-					orderStatus,
-				]
+			const stmt = this.db.prepare(
+				'INSERT OR IGNORE INTO failed_swaps (timestamp, agi_id, error_message, intent_type, asset_to_sell, amount_to_sell, asset_to_buy, order_id, order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+			);
+			stmt.run(
+				Math.floor(Date.now() / 1000),
+				agiId,
+				errorMessage,
+				intentType,
+				assetToSell,
+				amountToSell.toString(),
+				assetToBuy,
+				Number(orderId),
+				orderStatus
 			);
 		} catch (error) {
 			console.error('Error recording failed swap in database:', error);
@@ -89,15 +84,15 @@ class FailedSwapsDB {
 
 		try {
 			// First, check if the record exists.
-			const existingRecord = await this.db.get('SELECT * FROM failed_swaps WHERE agi_id = ?', [
-				agiId,
-			]);
+			const stmt = this.db.prepare('SELECT * FROM failed_swaps WHERE agi_id = ?');
+			const existingRecord = stmt.get(agiId);
 			if (!existingRecord) {
 				return;
 			}
 
 			// Execute the delete operation.
-			await this.db.run('DELETE FROM failed_swaps WHERE agi_id = ?', [agiId]);
+			const deleteStmt = this.db.prepare('DELETE FROM failed_swaps WHERE agi_id = ?');
+			deleteStmt.run(agiId);
 			console.log(`Deleted failed swap record for AGI ID ${agiId}`);
 		} catch (error) {
 			console.error(`Error deleting record for AGI ID ${agiId}:`, error);
