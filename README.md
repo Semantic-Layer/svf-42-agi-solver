@@ -12,7 +12,7 @@
 
 # AGI Solver
 
-AGI Solver is a backend system written in TypeScript designed to reliably fulfill onchain interaction requests (Agent Generated Intents) for AI agents. It serves as a critical bridge between AI agents and blockchain interactions, ensuring reliable execution of complex onchain operations.
+AGI Solver is a backend system written in TypeScript designed to reliably fulfill on-chain interaction requests (Agent Generated Intents) for AI agents. It serves as a critical bridge between AI agents and blockchain interactions, ensuring reliable execution of complex on-chain operations.
 
 ## Setup
 
