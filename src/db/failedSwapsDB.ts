@@ -36,6 +36,11 @@ class FailedSwapsDB {
 		this.initialized = true;
 	}
 
+	/**
+	 * Records a failed swap in the database.
+	 * - Each failed AGI will only be recorded once.
+	 * - Any type of exchange failure will be recorded.
+	 */
 	async recordFailedSwap(
 		agiId: number,
 		errorMessage: string,
@@ -65,16 +70,19 @@ class FailedSwapsDB {
 			);
 		} catch (error) {
 			console.error('Error recording failed swap in database:', error);
-			if (error instanceof Error) {
-				console.error('Error details:', {
-					name: error.name,
-					message: error.message,
-					stack: error.stack,
-				});
-			}
 		}
 	}
 
+	/**
+	 * Attempts to delete a failed swap record from the database.
+	 * - Ensure that only failed swap records are stored in the database.
+	 * - After each final swap, check if there are corresponding failed records.
+	 *   If there are, delete the records.
+	 * - After each swap is completed (handleSwapCompleted), a check is performed to see if the processed AGI
+	 *   has a history of failure records in the database. This will increase the runtime, but since the amount
+	 *   of failed data in the production environment is extremely low, the query time will be in milliseconds.
+	 *   Therefore, this is acceptable.
+	 */
 	async tryDeleteFailedSwap(agiId: number) {
 		await this.init();
 
@@ -89,7 +97,7 @@ class FailedSwapsDB {
 
 			// Execute the delete operation.
 			await this.db.run('DELETE FROM failed_swaps WHERE agi_id = ?', [agiId]);
-			console.log(`Deleted record for AGI ID ${agiId}`);
+			console.log(`Deleted failed swap record for AGI ID ${agiId}`);
 		} catch (error) {
 			console.error(`Error deleting record for AGI ID ${agiId}:`, error);
 		}
