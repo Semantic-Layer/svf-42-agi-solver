@@ -1,5 +1,5 @@
-import { createConfig, EVM, executeRoute, getRoutes, RouteOptions } from '@lifi/sdk';
-import { chainId, walletClient } from '../clients.ts';
+import { executeRoute, getRoutes, RouteOptions } from '@lifi/sdk';
+import { chainId } from '../clients.ts';
 import logger from '../logger.ts';
 import { NoRoutesFoundError } from '../errors.ts';
 import { formatEther } from 'viem';
@@ -20,16 +20,6 @@ export interface DefaultSwapParams {
 	fromAddress: string;
 	options?: RouteOptions;
 }
-
-// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers
-createConfig({
-	integrator: 'svf42',
-	providers: [
-		EVM({
-			getWalletClient: async () => walletClient,
-		}),
-	],
-});
 
 async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, options }: SwapParams) {
 	logger.table('LiFi Routes', {
