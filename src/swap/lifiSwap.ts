@@ -4,7 +4,7 @@ import logger from '../logger.ts';
 import { NoRoutesFoundError } from '../errors.ts';
 import { formatEther } from 'viem';
 
-export interface SwapParams {
+interface SwapParams {
 	chainId: number;
 	fromToken: string;
 	toToken: string;
@@ -13,7 +13,7 @@ export interface SwapParams {
 	options: RouteOptions;
 }
 
-export interface DefaultSwapParams {
+interface DefaultSwapParams {
 	fromToken: string;
 	toToken: string;
 	fromAmount: string;
@@ -36,7 +36,7 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		chainId: chainId,
 		fromToken: fromToken,
 		toToken: toToken,
-		amount: `${formatEther(BigInt(fromAmount))} ether`,
+		amount: `${formatEther(BigInt(fromAmount))} e18`,
 		fromAddress: fromAddress,
 		options: `${JSON.stringify(options)}`,
 	});

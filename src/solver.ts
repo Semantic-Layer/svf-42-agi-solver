@@ -39,7 +39,7 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 };
 
 // get the pending AGIs
-// here pending means the any AGIs that are not finialzed yet, including those in intermediate states
+// here pending means the any AGIs that are not finalized yet, including those in intermediate states
 const getPendingAGIs = async (processedAGIsAmount: number, startId: number, endId: number) => {
 	// Convert task IDs to indices (0-based), ensuring we never go below 0
 	const startIndex = Math.max(0, startId - 1);

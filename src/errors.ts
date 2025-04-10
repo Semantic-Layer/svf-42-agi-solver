@@ -5,13 +5,6 @@ export class NoRoutesFoundError extends Error {
 	}
 }
 
-export class MaxRetriesExceededError extends Error {
-	constructor(message: string = 'Maximum number of retries exceeded') {
-		super(message);
-		this.name = 'MaxRetriesExceededError';
-	}
-}
-
 export class SwapError extends Error {
 	originalError: Error | unknown;
 

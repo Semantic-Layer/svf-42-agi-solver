@@ -15,7 +15,7 @@ export interface Order {
 }
 
 export interface AgentGeneratedIntent {
-	intentType: number; // 0 for trade, 1 for others
+	intentType: number; // 0 for trade, 1 for others. At the moment, only the 0 is available.
 	assetToSell: string; // address of asset to sell
 	amountToSell: number; // amount of asset to sell
 	assetToBuy: string; // address of asset to buy
