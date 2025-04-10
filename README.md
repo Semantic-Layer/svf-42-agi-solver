@@ -100,7 +100,7 @@ The AGI Queue Manager is a system that manages the processing queue of Agent Gen
 
 #### d. After Swap (4 - SwapCompleted)
 
-- Deposit swapped assets back to contract
+- Deposit swapped assets back to the contract
 - Set internal status to 2 (ProceedsReceived)
 
 #### e. Final State (2 - ProceedsReceived)
