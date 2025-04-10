@@ -26,7 +26,7 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		chainId: chainId,
 		fromToken: fromToken,
 		toToken: toToken,
-		amount: `${formatEther(BigInt(fromAmount))} ether`,
+		amount: `${formatEther(BigInt(fromAmount))} e18`,
 		fromAddress: fromAddress,
 		options: `${JSON.stringify(options)}`,
 	});
