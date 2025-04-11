@@ -3,7 +3,7 @@ import { chainId, walletClient } from '../clients.ts';
 import logger from '../logger.ts';
 import { NoRoutesFoundError } from '../errors.ts';
 import { formatEther } from 'viem';
-import { config } from '../config.ts';
+import { SWAP_CONFIG } from '../config.ts';
 
 interface SwapParams {
 	chainId: number;
@@ -24,7 +24,7 @@ interface DefaultSwapParams {
 
 // https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers
 createConfig({
-	integrator: 'svf42',
+	integrator: SWAP_CONFIG.LIFI.INTEGRATOR,
 	providers: [
 		EVM({
 			getWalletClient: async () => walletClient,
@@ -41,16 +41,6 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		fromAddress: fromAddress,
 		options: `${JSON.stringify(options)}`,
 	});
-
-	// Apply gas settings from config
-	const enhancedOptions = {
-		...options,
-		// Add gas price limit from config
-		maxGasPrice: config.maxGasPrice,
-		// Add gas limit multiplier from config
-		gasLimitMultiplier: config.gasLimitMultiplier,
-	};
-
 	const result = await getRoutes({
 		fromChainId: chainId,
 		toChainId: chainId,
@@ -58,7 +48,7 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		toTokenAddress: toToken,
 		fromAmount: fromAmount,
 		fromAddress: fromAddress,
-		options: enhancedOptions,
+		options: options,
 	});
 
 	if (!result.routes.length) {
@@ -68,7 +58,7 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 	logger.info(`routes found: ${result.routes.length}`);
 	logger.item(`best route: ${JSON.stringify(result.routes[0], null, 2)}`);
 	logger.item(`best route steps: ${result.routes[0].steps.length}`);
-	logger.item(`options: ${JSON.stringify(enhancedOptions, null, 2)}`);
+	logger.item(`options: ${JSON.stringify(options, null, 2)}`);
 
 	const route = result.routes[0];
 
@@ -86,10 +76,7 @@ export async function defaultSwap({
 	toToken,
 	fromAmount,
 	fromAddress,
-	options = {
-		slippage: config.defaultSlippage, // Use default slippage from config
-		order: 'RECOMMENDED',
-	},
+	options = SWAP_CONFIG.LIFI.DEFAULT_OPTIONS,
 }: DefaultSwapParams) {
 	const execution = await swap({
 		chainId: chainId,

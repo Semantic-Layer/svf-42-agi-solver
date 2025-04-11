@@ -7,11 +7,10 @@ import {
 } from './clients.ts';
 import { type Hex } from 'viem';
 import { agiQueueManager } from './AGIQueueManager.ts';
-import { metricsCollector } from './metrics.ts';
-import { config } from './config.ts';
+import { SOLVER_CONFIG } from './config.ts';
 
 // call the contract function getProcessedAGIs
-const BATCH_SIZE = 50;
+const BATCH_SIZE = SOLVER_CONFIG.BATCH_SIZE;
 const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 	const result: number[] = [];
 	const totalBatches = Math.ceil((endIndex - startIndex + 1) / BATCH_SIZE);
@@ -181,16 +180,9 @@ export default async function startListener() {
 		});
 
 		await processPendingAGIs();
-
-		// Set up interval for processing pending AGIs
 		setInterval(async () => {
 			await processPendingAGIs();
-		}, config.checkInterval * 15); // 15 times the check interval
-
-		// Log initial metrics summary
-		metricsCollector.logMetricsSummary();
-
-		logger.success('AGI Queue Manager started successfully');
+		}, SOLVER_CONFIG.PROCESS_INTERVAL); // 30 seconds
 	} catch (error) {
 		console.error('Error starting listener', error);
 	}

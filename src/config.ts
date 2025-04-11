@@ -1,80 +1,72 @@
-import 'dotenv/config';
-
 /**
- * Configuration system for the AGI Queue Manager
- * Loads values from environment variables with fallbacks to defaults
+ * Configuration file for the SVF AGI Solver
+ * 
+ * This file centralizes all hardcoded values from the codebase to make them easier to manage and update.
  */
-export interface Config {
-    // Queue settings
-    retryDelay: number;
-    swapRetryDelay: number;
-    maxRetries: number;
-    checkInterval: number;
 
-    // Swap settings
-    defaultSlippage: number;
+// AGI Queue Manager Configuration
+export const AGI_QUEUE_CONFIG = {
+    // Retry and delay settings
+    RETRY_DELAY: 1000, // 1 second delay between retries
+    SWAP_RETRY_DELAY: 30000, // 30 seconds delay for swap retries
+    MAX_RETRIES: 2, // Maximum number of retries
+    CHECK_INTERVAL: 2000, // Check queue every 2 seconds
 
-    // Gas settings
-    maxGasPrice: bigint;
-    gasLimitMultiplier: number;
-
-    // Logging settings
-    logLevel: 'debug' | 'info' | 'warn' | 'error';
-
-    // Metrics settings
-    metricsLogInterval: number;
-}
-
-/**
- * Default configuration values
- */
-const defaultConfig: Config = {
-    // Queue settings
-    retryDelay: 1000, // 1 second
-    swapRetryDelay: 30000, // 30 seconds
-    maxRetries: 2,
-    checkInterval: 2000, // 2 seconds
-
-    // Swap settings
-    defaultSlippage: 0.05, // 5%
-
-    // Gas settings
-    maxGasPrice: BigInt(100000000000), // 100 gwei
-    gasLimitMultiplier: 1.2, // 20% buffer
-
-    // Logging settings
-    logLevel: 'info',
-
-    // Metrics settings
-    metricsLogInterval: 300000, // 5 minutes
+    // Order status constants
+    ORDER_STATUS: {
+        PendingDispense: 0, // Contract: Initial state, waiting to withdraw asset
+        DispensedPendingProceeds: 1, // Contract: Asset withdrawn, ready for swap
+        SwapInitiated: 3, // Internal: Swap operation started
+        SwapCompleted: 4, // Internal: Swap done, ready to deposit proceeds
+        ProceedsReceived: 2, // Contract: Final state, all operations completed
+    }
 };
 
-/**
- * Load configuration from environment variables
- * Falls back to default values if not specified
- */
-export function loadConfig(): Config {
-    return {
-        // Queue settings
-        retryDelay: parseInt(process.env.RETRY_DELAY || defaultConfig.retryDelay.toString()),
-        swapRetryDelay: parseInt(process.env.SWAP_RETRY_DELAY || defaultConfig.swapRetryDelay.toString()),
-        maxRetries: parseInt(process.env.MAX_RETRIES || defaultConfig.maxRetries.toString()),
-        checkInterval: parseInt(process.env.CHECK_INTERVAL || defaultConfig.checkInterval.toString()),
+// Solver Configuration
+export const SOLVER_CONFIG = {
+    BATCH_SIZE: 50, // Number of AGIs to process in a batch
+    PROCESS_INTERVAL: 30000, // 30 seconds interval for processing pending AGIs
+};
 
-        // Swap settings
-        defaultSlippage: parseFloat(process.env.DEFAULT_SLIPPAGE || defaultConfig.defaultSlippage.toString()),
+// Swap Configuration
+export const SWAP_CONFIG = {
+    // LiFi SDK configuration
+    LIFI: {
+        INTEGRATOR: 'svf42',
+        DEFAULT_OPTIONS: {
+            slippage: 0.05, // 5% slippage tolerance
+            order: 'RECOMMENDED' as const, // Type assertion to ensure it matches the expected type
+        }
+    }
+};
 
-        // Gas settings
-        maxGasPrice: BigInt(process.env.MAX_GAS_PRICE || defaultConfig.maxGasPrice.toString()),
-        gasLimitMultiplier: parseFloat(process.env.GAS_LIMIT_MULTIPLIER || defaultConfig.gasLimitMultiplier.toString()),
+// Logger Configuration
+export const LOGGER_CONFIG = {
+    // File paths
+    LOG_FILES: {
+        SUCCESS: 'logs/success.log',
+    },
 
-        // Logging settings
-        logLevel: (process.env.LOG_LEVEL || defaultConfig.logLevel) as 'debug' | 'info' | 'warn' | 'error',
+    // Log levels
+    LEVELS: {
+        INFO: 'info',
+    }
+};
 
-        // Metrics settings
-        metricsLogInterval: parseInt(process.env.METRICS_LOG_INTERVAL || defaultConfig.metricsLogInterval.toString()),
-    };
-}
+// Blockchain Configuration
+export const BLOCKCHAIN_CONFIG = {
+    // WebSocket configuration
+    WS: {
+        KEEP_ALIVE: true,
+        RECONNECT: true,
+    }
+};
 
-// Export the loaded configuration
-export const config = loadConfig(); 
+// Export a default configuration object that combines all configs
+export default {
+    AGI_QUEUE: AGI_QUEUE_CONFIG,
+    SOLVER: SOLVER_CONFIG,
+    SWAP: SWAP_CONFIG,
+    LOGGER: LOGGER_CONFIG,
+    BLOCKCHAIN: BLOCKCHAIN_CONFIG,
+}; 

@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './logger.ts';
+import { BLOCKCHAIN_CONFIG } from './config.ts';
 
 interface ChainConfig {
 	chainId: number;
@@ -94,8 +95,8 @@ function initializeClients(): BlockchainServices {
 	});
 
 	const wsConfig: WebSocketTransportConfig = {
-		keepAlive: true,
-		reconnect: true,
+		keepAlive: BLOCKCHAIN_CONFIG.WS.KEEP_ALIVE,
+		reconnect: BLOCKCHAIN_CONFIG.WS.RECONNECT,
 	};
 
 	const publicClientWSS = createPublicClient({

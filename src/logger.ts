@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { LOGGER_CONFIG } from './config.ts';
 
 // Color constants for terminal output
 const colors = {
@@ -39,8 +40,8 @@ const loggerTransports = {
 		),
 	}),
 	successFile: new winston.transports.File({
-		filename: 'logs/success.log',
-		level: 'info', // only accept info level
+		filename: LOGGER_CONFIG.LOG_FILES.SUCCESS,
+		level: LOGGER_CONFIG.LEVELS.INFO, // only accept info level
 		format: winston.format.combine(
 			winston.format.timestamp({
 				format: () => {
