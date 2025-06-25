@@ -90,13 +90,13 @@ The AGI Queue Manager is a system that manages the processing queue of Agent Gen
 
 #### b. After Withdraw (1 - DispensedPendingProceeds)
 
-- Set internal status to 4 (SwapInitiated)
+- Set internal status to 3 (SwapInitiated)
 - Begin swap operation
 
 #### c. Swap Initiated (3 - SwapInitiated)
 
 - Perform swap operation
-- Set internal status to 3 (SwapCompleted) when swap is done
+- Set internal status to 4 (SwapCompleted) when swap is done
 
 #### d. After Swap (4 - SwapCompleted)
 
@@ -113,7 +113,7 @@ The AGI Queue Manager is a system that manages the processing queue of Agent Gen
 - Use contract status as primary source of truth
 - Only use internal SwapCompleted status when:
   - Contract status is 1 (DispensedPendingProceeds)
-  - AND we have an internal status (not undefined)
+  - And we have an internal status (not undefined)
 
 ### 4. Transaction Handling
 
