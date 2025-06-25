@@ -16,7 +16,6 @@ import { anvil, base, baseSepolia } from 'viem/chains';
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import logger from './logger.ts';
 
 interface ChainConfig {
@@ -49,11 +48,10 @@ function initializeConfig(): ChainConfig {
 	}
 
 	const chainId = parseInt(CHAIN_ID);
-	const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 	// Load contract deployment data
 	const coreDeploymentData = JSON.parse(
-		fs.readFileSync(path.join(__dirname, `../contracts/deployments/agi/${chainId}.json`), 'utf8')
+		fs.readFileSync(path.join(process.cwd(), `contracts/deployments/agi/${chainId}.json`), 'utf8')
 	);
 
 	return {
@@ -82,9 +80,8 @@ function initializeClients(): BlockchainServices {
 	logger.info(`Account: ${account.address}`);
 
 	// Load contract ABI
-	const __dirname = path.dirname(fileURLToPath(import.meta.url));
 	const AGI = JSON.parse(
-		fs.readFileSync(path.join(__dirname, '../contracts/out/Mock13.sol/Mock13.json'), 'utf8')
+		fs.readFileSync(path.join(process.cwd(), 'contracts/out/Mock13.sol/Mock13.json'), 'utf8')
 	);
 
 	// Initialize public clients
