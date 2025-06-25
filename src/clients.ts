@@ -35,6 +35,7 @@ interface BlockchainServices {
 	chainId: number;
 	agiContractABI: Abi;
 	agiContractAddress: string;
+	IERC20ABI: Abi;
 }
 
 /**
@@ -54,12 +55,19 @@ function initializeConfig(): ChainConfig {
 		fs.readFileSync(path.join(process.cwd(), `contracts/deployments/agi/${chainId}.json`), 'utf8')
 	);
 
+	let agiContractAddress = '';
+	if (process.env.MODE === 'PRODUCTION') {
+		agiContractAddress = process.env.WAREHOUSE13_ADDRESS!;
+	} else {
+		agiContractAddress = coreDeploymentData.addresses.agi;
+	}
+
 	return {
 		chainId,
 		rpcUrl: RPC,
 		wssRpcUrl: WSS_RPC,
 		privateKey: PRIVATE_KEY as Hex,
-		agiContractAddress: coreDeploymentData.addresses.agi,
+		agiContractAddress: agiContractAddress,
 	};
 }
 
@@ -80,9 +88,18 @@ function initializeClients(): BlockchainServices {
 	logger.info(`Account: ${account.address}`);
 
 	// Load contract ABI
-	const AGI = JSON.parse(
-		fs.readFileSync(path.join(process.cwd(), 'contracts/out/Mock13.sol/Mock13.json'), 'utf8')
-	);
+	let AGI;
+	if (process.env.MODE === 'PRODUCTION') {
+		AGI = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'abi/warehouse13.json'), 'utf8'));
+	} else {
+		AGI = JSON.parse(
+			fs.readFileSync(path.join(process.cwd(), 'contracts/out/Mock13.sol/Mock13.json'), 'utf8')
+		);
+	}
+
+	const IERC20ABI = JSON.parse(
+		fs.readFileSync(path.join(process.cwd(), 'abi/IERC20.json'), 'utf8')
+	).abi;
 
 	// Initialize public clients
 	const publicClientHTTP = createPublicClient({
@@ -116,6 +133,7 @@ function initializeClients(): BlockchainServices {
 		chainId: config.chainId,
 		agiContractABI: AGI.abi,
 		agiContractAddress: config.agiContractAddress,
+		IERC20ABI,
 	};
 }
 
@@ -129,6 +147,7 @@ const {
 	chainId,
 	agiContractABI,
 	agiContractAddress,
+	IERC20ABI,
 }: BlockchainServices = initializeClients();
 
 export {
@@ -140,4 +159,5 @@ export {
 	chainId,
 	agiContractABI,
 	agiContractAddress,
+	IERC20ABI,
 };

@@ -53,7 +53,8 @@ import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } fr
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
-import { defaultSwap } from './swap/lifiSwap.ts';
+// TODO: add lifi route back import { defaultSwap } from './swap/lifiSwap.ts';
+import { defaultSwap } from './swap/uniswap.ts';
 import { depositAsset, withdrawAsset } from './utils.ts';
 import { SwapError } from './errors.ts';
 import { failedSwapsDB } from './db/failedSwapsDB.ts';

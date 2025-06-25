@@ -26,7 +26,7 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 		const batchResult = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
-			functionName: 'getProcessedAGIs',
+			functionName: 'getProcessedOrderIdsRange',
 			args: [startIndex, endIndex + 1],
 		})) as number[];
 
@@ -82,7 +82,7 @@ const processPendingAGIs = async (startId = 1) => {
 		const processedAGIsAmount = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
-			functionName: 'processedAGIsLength',
+			functionName: 'getProcessedOrderCount',
 			args: [],
 		})) as bigint;
 
@@ -137,7 +137,7 @@ const processPendingAGIs = async (startId = 1) => {
 
 		logger.success(`All ${unprocessedAGIs.length} tasks added to the queue`);
 	} catch (error) {
-		console.error('Error processing pending AGIs', error);
+		logger.error(`Error processing pending AGIs: ${error}`);
 		// Don't throw, just log the error
 	}
 };
@@ -183,6 +183,6 @@ export default async function startListener() {
 			await processPendingAGIs();
 		}, 30_000); // 30 seconds
 	} catch (error) {
-		console.error('Error starting listener', error);
+		logger.error(`Error starting listener: ${error}`);
 	}
 }
