@@ -34,8 +34,11 @@
 	},
 	"dependencies": {
 		"@lifi/sdk": "^3.6.5",
+		"@uniswap/sdk-core": "^7.7.2",
+		"@uniswap/smart-order-router": "^4.22.2",
 		"better-sqlite3": "^11.9.1",
 		"dotenv": "^16.4.7",
+		"ethers": "5",
 		"viem": "^2.23.13",
 		"winston": "^3.17.0"
 	},
