@@ -97,7 +97,8 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		// Not ETH
 		await approveERC20(
 			fromToken.address,
-			'0x2626664c2603336E57B271c5C0b26F421741e481' as Hex,
+			// TODO approve which? '0x2626664c2603336E57B271c5C0b26F421741e481' or route.methodParameters.to
+			route.methodParameters.to,
 			fromAmount
 		);
 	}
