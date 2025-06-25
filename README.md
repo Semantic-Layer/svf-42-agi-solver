@@ -45,7 +45,7 @@ AGI Solver is a backend system written in TypeScript designed to reliably fulfil
    finally, under root directory
 
    ```
-   make anvilDeploy
+   make deploy
    ```
 
 4. Start solver
