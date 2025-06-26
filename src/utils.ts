@@ -1,5 +1,11 @@
 import { type Hex } from 'viem';
-import { agiContractAddress, walletClient, publicClientHTTP, agiContractABI } from './clients.ts';
+import {
+	agiContractAddress,
+	walletClient,
+	publicClientHTTP,
+	agiContractABI,
+	IERC20ABI,
+} from './clients.ts';
 import logger from './logger.ts';
 
 export async function checkTransactionReceipt(hash: Hex, context = 'no txn context provided') {
@@ -16,9 +22,11 @@ export async function checkTransactionReceipt(hash: Hex, context = 'no txn conte
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	} catch (error) {
-		while (true) {
+		const maxRetryTimes = 1000; // in case the txn is never successful
+		let retryTimes = 0;
+		while (retryTimes < maxRetryTimes) {
 			try {
-				await new Promise(resolve => setTimeout(resolve, 500));
+				await new Promise(resolve => setTimeout(resolve, 3000));
 				const receipt = await publicClientHTTP.getTransactionReceipt({
 					hash: hash,
 				});
@@ -33,8 +41,9 @@ export async function checkTransactionReceipt(hash: Hex, context = 'no txn conte
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			} catch (retryError) {
 				logger.warning(
-					`${context}: ⚠️  Error getting transaction receipt, trying again in 0.5 second`
+					`${context}: ⚠️  Error getting transaction receipt, trying again in 3 second`
 				);
+				retryTimes++;
 			}
 		}
 	}
@@ -69,8 +78,12 @@ export async function withdrawAsset(orderIndex: number) {
  * @param orderIndex - The ID of the AGI to deposit for
  * @param amount - The amount of tokens to deposit
  */
-export async function depositAsset(orderIndex: number, amount: number) {
+export async function depositAsset(orderIndex: number, assetToBuy: string, amount: number) {
 	try {
+		// We should approve the assetToBuy to the warehouse13 contract first! Or the txn will fail
+		await approveERC20(assetToBuy, agiContractAddress as Hex, amount.toString());
+
+		// Start to process the deposit
 		logger.process(`Depositing ${amount} for AGI ${orderIndex}`);
 		const { request } = await publicClientHTTP.simulateContract({
 			account: walletClient.account,
@@ -80,7 +93,6 @@ export async function depositAsset(orderIndex: number, amount: number) {
 			args: [orderIndex, amount],
 		});
 
-		await walletClient.writeContract(request);
 		const hash = await walletClient.writeContract(request);
 		logger.item(`[Order ${orderIndex}]: deposit txn hash: ${hash}`);
 		await checkTransactionReceipt(hash, `[deposit txn hash for AGI ${orderIndex}]`);
@@ -88,4 +100,35 @@ export async function depositAsset(orderIndex: number, amount: number) {
 		logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
 		throw error;
 	}
+}
+
+/**
+ * Approve the assetToBuy to the warehouse13 contract
+ * @param tokenAddress - The address of the token to approve
+ * @param spenderAddress - The address of the spender
+ * @param amount - The amount of tokens to approve
+ */
+export async function approveERC20(tokenAddress: string, spenderAddress: string, amount: string) {
+	logger.info(`Approving ${amount} tokens for spender ${spenderAddress}`);
+
+	const { request } = await publicClientHTTP.simulateContract({
+		address: tokenAddress as Hex,
+		abi: IERC20ABI,
+		functionName: 'approve',
+		args: [spenderAddress as Hex, BigInt(amount)],
+		account: walletClient.account!,
+	});
+
+	const hash = await walletClient.writeContract(request);
+
+	logger.info(`Approval transaction hash: ${hash}`);
+
+	// Wait for the transaction to be mined
+	const receipt = await publicClientHTTP.waitForTransactionReceipt({ hash });
+
+	if (receipt.status === 'reverted') {
+		throw new Error('Approval transaction failed');
+	}
+
+	logger.success('Token approval successful!');
 }

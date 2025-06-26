@@ -40,26 +40,52 @@ async function swap({ chainId, fromToken, toToken, fromAmount, fromAddress, opti
 		fromAddress: fromAddress,
 		options: `${JSON.stringify(options)}`,
 	});
-	const result = await getRoutes({
-		fromChainId: chainId,
-		toChainId: chainId,
-		fromTokenAddress: fromToken,
-		toTokenAddress: toToken,
-		fromAmount: fromAmount,
-		fromAddress: fromAddress,
-		options: options,
-	});
 
-	if (!result.routes.length) {
-		throw new NoRoutesFoundError();
+	const MAX_RETRIES = 10;
+	const RETRY_DELAY = 5000; // 5 seconds
+	let retryCount = 0;
+	let lastError;
+	let route;
+
+	while (retryCount < MAX_RETRIES) {
+		try {
+			const result = await getRoutes({
+				fromChainId: chainId,
+				toChainId: chainId,
+				fromTokenAddress: fromToken,
+				toTokenAddress: toToken,
+				fromAmount: fromAmount,
+				fromAddress: fromAddress,
+				options: options,
+			});
+
+			if (!result.routes.length) {
+				lastError = new NoRoutesFoundError();
+				logger.warning(`No routes found, attempt ${retryCount + 1}/${MAX_RETRIES}`);
+			} else {
+				logger.info(`routes found: ${result.routes.length}`);
+				logger.item(`best route: ${JSON.stringify(result.routes[0], null, 2)}`);
+				logger.item(`best route steps: ${result.routes[0].steps.length}`);
+				logger.item(`options: ${JSON.stringify(options, null, 2)}`);
+				route = result.routes[0];
+				break;
+			}
+		} catch (error) {
+			lastError = error;
+			logger.warning(`Error finding routes, attempt ${retryCount + 1}/${MAX_RETRIES}: ${error}`);
+		}
+
+		retryCount++;
+		if (retryCount < MAX_RETRIES) {
+			logger.info(`Waiting ${RETRY_DELAY / 1000} seconds before next retry...`);
+			await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+		}
 	}
 
-	logger.info(`routes found: ${result.routes.length}`);
-	logger.item(`best route: ${JSON.stringify(result.routes[0], null, 2)}`);
-	logger.item(`best route steps: ${result.routes[0].steps.length}`);
-	logger.item(`options: ${JSON.stringify(options, null, 2)}`);
-
-	const route = result.routes[0];
+	// If we've exhausted all retries or no route was found, throw the last error
+	if (!route) {
+		throw lastError || new NoRoutesFoundError();
+	}
 
 	const execution = await executeRoute(route);
 	const process = execution.steps[0]?.execution?.process[0];

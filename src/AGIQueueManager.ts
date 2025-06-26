@@ -53,8 +53,7 @@ import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } fr
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
-// TODO: add lifi route back import { defaultSwap } from './swap/lifiSwap.ts';
-import { defaultSwap } from './swap/uniswap.ts';
+import { defaultSwap } from './swap/lifiSwap.ts';
 import { depositAsset, withdrawAsset } from './utils.ts';
 import { SwapError } from './errors.ts';
 import { failedSwapsDB } from './db/failedSwapsDB.ts';
@@ -471,7 +470,16 @@ export class AGIQueueManager {
 	private async handleSwapCompleted(agiId: number) {
 		const swapResult = this.swapResults.get(agiId);
 		if (swapResult) {
-			await depositAsset(agiId, swapResult.amountToBuy ?? 0);
+			// get the assetToBuy
+			const agi = (await publicClientHTTP.readContract({
+				address: agiContractAddress as Hex,
+				abi: agiContractABI,
+				functionName: 'viewAGI',
+				args: [agiId],
+			})) as AgentGeneratedIntent;
+			const assetToBuy = agi.assetToBuy;
+
+			await depositAsset(agiId, assetToBuy, swapResult.amountToBuy ?? 0);
 			this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
 
 			// If an attempt is successful, we should delete the corresponding failure record from the database.
