@@ -18,7 +18,7 @@ build:
 deploy:
 	${MAKE} -C contracts anvilDeploy
 
-
+# ------------------------------------ Mock test -------------------------------------
 publishAGI:
 	@if [ -z '$(ASSET_TO_SELL)' ] || [ -z '$(AMOUNT_TO_SELL)' ] || [ -z '$(ASSET_TO_BUY)' ]; then \
 		echo 'Error: Missing required parameters.'; \

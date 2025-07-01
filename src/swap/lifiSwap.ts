@@ -21,7 +21,7 @@ interface DefaultSwapParams {
 	options?: RouteOptions;
 }
 
-// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers
+// https://docs.li.fi/integrate-li.fi-sdk/configure-sdk-providers
 createConfig({
 	integrator: 'svf42',
 	providers: [
