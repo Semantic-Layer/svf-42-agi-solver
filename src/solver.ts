@@ -27,7 +27,7 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
 			functionName: 'getProcessedAGIs',
-			args: [startIndex, endIndex + 1],
+			args: [i, batchEndIndex + 1],
 		})) as number[];
 
 		logger.item(`Retrieved ${batchResult.length} processed tasks in batch ${currentBatch}`);
