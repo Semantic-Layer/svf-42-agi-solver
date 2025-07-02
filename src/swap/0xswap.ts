@@ -52,7 +52,7 @@ const fetchPrice = async (
 		slippagePercentage: slippagePercentage.toString(),
 		taker: walletClient.account?.address as Hex,
 	});
-	logger.table('Price Params', {
+	logger.table('Route Params', {
 		chainId: chainId,
 		sellToken: sellToken,
 		buyToken: buyToken,
@@ -82,6 +82,7 @@ const fetchPrice = async (
  * @param token - The token contract
  * @param price - The price of the token swap
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const checkAndSetAllowance = async (token: any, price: any) => {
 	logger.info('🔑 ERC-20 token detected, checking allowance...');
 	if (price.issues.allowance !== null) {
@@ -145,6 +146,7 @@ const fetchQuote = async (
  * @param quote - The quote of the token swap
  * @returns The signature of the token swap
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const signPermit2 = async (quote: any) => {
 	let signature: Hex | undefined;
 	if (quote.permit2?.eip712) {
@@ -178,6 +180,7 @@ const signPermit2 = async (quote: any) => {
  * @param quote - The quote of the token swap
  * @param signature - The signature of the token swap
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const submitTransaction = async (quote: any, signature: Hex | undefined): Promise<string> => {
 	const nonce = await publicClientHTTP.getTransactionCount({
 		address: walletClient.account?.address as Hex,
