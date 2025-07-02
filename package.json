@@ -43,7 +43,8 @@
 		"ethers": "5",
 		"figlet": "^1.8.1",
 		"viem": "^2.23.13",
-		"winston": "^3.17.0"
+		"winston": "^3.17.0",
+		"qs": "^6.12.1"
 	},
 	"devDependencies": {
 		"@eslint/js": "9.22.0",

@@ -49,11 +49,11 @@
  *    - Maintain FIFO order while allowing other items to be processed
  */
 
-import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
+import { publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
-import { defaultSwap } from './swap/lifiSwap.ts';
+import { defaultSwap } from './swap/0xswap.ts';
 import { depositAsset, withdrawAsset } from './utils.ts';
 import { SwapError } from './errors.ts';
 import { failedSwapsDB } from './db/failedSwapsDB.ts';
@@ -398,9 +398,11 @@ export class AGIQueueManager {
 	 * - Performs swap and stores result
 	 */
 	private async handleSwapInitiated(agiId: number, agi: AgentGeneratedIntent) {
-		// Check if swap is already in process
-		logger.info(`checking if swap ${agiId} is already in process`);
+		// Check if swap is already in process or completed
 		const existingSwap = this.swapResults.get(agiId);
+		logger.info(
+			`checking if swap ${agiId} is already in process or completed, status: ${existingSwap?.status}`
+		);
 		if (existingSwap) {
 			logger.info(`swap ${agiId} already in process: ${existingSwap.status}`);
 			if (existingSwap.status === 'pending') {
@@ -437,12 +439,11 @@ export class AGIQueueManager {
 		}
 		try {
 			logger.info(`starting swap`);
-			const amountToBuy = await defaultSwap({
-				fromToken: agi.assetToSell,
-				toToken: agi.assetToBuy,
-				fromAmount: agi.amountToSell.toString(),
-				fromAddress: walletClient.account!.address,
-			});
+			const amountToBuy = await defaultSwap(
+				agi.assetToSell,
+				agi.assetToBuy,
+				agi.amountToSell.toString()
+			);
 			this.swapResults.set(agiId, {
 				...currentSwap,
 				amountToBuy: parseInt(amountToBuy),
