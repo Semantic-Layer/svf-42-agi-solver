@@ -74,7 +74,7 @@ const fetchPrice = async (
 		logger.error('[Check Price] Liquidity is not available for the swap, please try again later');
 		throw new Error('Liquidity not available');
 	}
-	return price;
+	return { price, priceParams };
 };
 
 /**
@@ -104,27 +104,19 @@ const checkAndSetAllowance = async (token: any, price: any) => {
 
 /**
  * Fetch quote for token swap
- * @param sellToken - The address of the token to sell
- * @param buyToken - The address of the token to buy
- * @param sellAmount - The amount of the token to sell
- * @param slippageBps - The slippage basis points (e.g., 100 for 1%)
+ * @param priceParams - The URLSearchParams from fetchPrice
  * @returns The quote of the token swap
  */
-const fetchQuote = async (
-	sellToken: string,
-	buyToken: string,
-	sellAmount: string,
-	slippageBps: number = 100
-) => {
+const fetchQuote = async (priceParams: URLSearchParams) => {
+	const sellToken = priceParams.get('sellToken');
+	const buyToken = priceParams.get('buyToken');
+	const sellAmount = priceParams.get('sellAmount');
+
 	logger.info(`Fetching quote to swap ${sellAmount} (wei) of ${sellToken} for ${buyToken}`);
-	const quoteParams = new URLSearchParams({
-		chainId: chainId.toString(),
-		sellToken,
-		buyToken,
-		sellAmount,
-		slippageBps: slippageBps.toString(),
-		taker: walletClient.account?.address as Hex,
-	});
+	const quoteParams = new URLSearchParams();
+	for (const [key, value] of priceParams.entries()) {
+		quoteParams.append(key, value);
+	}
 
 	const quoteResponse = await fetch(
 		'https://api.0x.org/swap/permit2/quote?' + quoteParams.toString(),
@@ -226,19 +218,14 @@ const executeSwap = async (
 ) => {
 	const sellToken = getTokenContract(tokenToSellAddress);
 
-	const price = await fetchPrice(
+	const { price, priceParams } = await fetchPrice(
 		tokenToSellAddress,
 		tokenToBuyAddress,
 		sellAmountInput,
 		slippageBps
 	);
 	await checkAndSetAllowance(sellToken, price);
-	const quote = await fetchQuote(
-		tokenToSellAddress,
-		tokenToBuyAddress,
-		sellAmountInput,
-		slippageBps
-	);
+	const quote = await fetchQuote(priceParams);
 	const signature = await signPermit2(quote);
 	const hash = await submitTransaction(quote, signature);
 
