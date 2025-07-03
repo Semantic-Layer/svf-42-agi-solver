@@ -11,6 +11,8 @@ dotenv();
 const { ZERO_EX_API_KEY } = process.env;
 if (!ZERO_EX_API_KEY) throw new Error('missing ZERO_EX_API_KEY.');
 
+// API constants
+const ZERO_EX_API_BASE_URL = 'https://api.0x.org/swap/permit2';
 // fetch headers
 const headers = new Headers({
 	'Content-Type': 'application/json',
@@ -62,13 +64,12 @@ const fetchPrice = async (
 		taker: walletClient.account?.address,
 	});
 
-	const priceResponse = await fetch(
-		'https://api.0x.org/swap/permit2/price?' + priceParams.toString(),
-		{ headers }
-	);
+	const priceResponse = await fetch(`${ZERO_EX_API_BASE_URL}/price?${priceParams.toString()}`, {
+		headers,
+	});
 
 	const price = await priceResponse.json();
-	logger.event(`🔍 API Request: https://api.0x.org/swap/permit2/price?${priceParams.toString()}`);
+	logger.event(`🔍 API Request: ${ZERO_EX_API_BASE_URL}/price?${priceParams.toString()}`);
 	if (price.liquidityAvailable) {
 		logger.success('[Check Price] Liquidity is available for the swap');
 	} else {
@@ -136,10 +137,9 @@ const fetchQuote = async (priceParams: URLSearchParams) => {
 		quoteParams.append(key, value);
 	}
 
-	const quoteResponse = await fetch(
-		'https://api.0x.org/swap/permit2/quote?' + quoteParams.toString(),
-		{ headers }
-	);
+	const quoteResponse = await fetch(`${ZERO_EX_API_BASE_URL}/quote?${quoteParams.toString()}`, {
+		headers,
+	});
 
 	const quote = await quoteResponse.json();
 	if (quote.liquidityAvailable) {
