@@ -160,12 +160,13 @@ export default async function startListener() {
 						// @ts-expect-error - log.args is dynamically typed
 						const { orderId, assetToSell, amountToSell, assetToBuy, orderStatus } = log.args;
 
-						logger.separator();
-						logger.event(`NEW EVENT FOR TASK #${orderId}`);
-						logger.item(`Asset to Sell: ${assetToSell}`);
-						logger.item(`Amount to Sell: ${amountToSell}`);
-						logger.item(`Asset to Buy: ${assetToBuy}`);
-						logger.item(`Order Status: ${orderStatus}`);
+						logger.table('AGI', {
+							orderId: orderId,
+							assetToSell: assetToSell,
+							amountToSell: amountToSell,
+							assetToBuy: assetToBuy,
+							orderStatus: orderStatus,
+						});
 
 						agiQueueManager.add(orderId);
 					} catch (error) {
