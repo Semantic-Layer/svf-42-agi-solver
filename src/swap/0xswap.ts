@@ -35,14 +35,14 @@ const getTokenContract = (address: string) => {
  * @param sellToken - The address of the token to sell
  * @param buyToken - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 0.01 for 1%)
+ * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
  * @returns The price of the token swap
  */
 const fetchPrice = async (
 	sellToken: string,
 	buyToken: string,
 	sellAmount: string,
-	slippagePercentage: number = 0.01
+	slippagePercentage: number = 100
 ) => {
 	const priceParams = new URLSearchParams({
 		chainId: chainId.toString(),
@@ -107,14 +107,14 @@ const checkAndSetAllowance = async (token: any, price: any) => {
  * @param sellToken - The address of the token to sell
  * @param buyToken - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 0.01 for 1%)
+ * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
  * @returns The quote of the token swap
  */
 const fetchQuote = async (
 	sellToken: string,
 	buyToken: string,
 	sellAmount: string,
-	slippagePercentage: number = 0.01
+	slippagePercentage: number = 100
 ) => {
 	logger.info(`Fetching quote to swap ${sellAmount} (wei) of ${sellToken} for ${buyToken}`);
 	const quoteParams = new URLSearchParams({
