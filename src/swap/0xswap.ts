@@ -4,7 +4,7 @@ import type { Account, Hex } from 'viem';
 import { base } from 'viem/chains';
 import { chainId, publicClientHTTP, walletClient } from '../clients.ts';
 import logger from '../logger.ts';
-import { approveERC20 } from '../utils.ts';
+import { approveERC20, ZERO_ADDRESS } from '../utils.ts';
 
 // load env vars
 dotenv();
@@ -69,6 +69,10 @@ const fetchPrice = async (
 	});
 
 	const price = await priceResponse.json();
+
+	// TODO: remove it when the PR is ready
+	console.log('debug price: ', JSON.stringify(price, null, 2));
+
 	logger.event(`🔍 API Request: ${ZERO_EX_API_BASE_URL}/price?${priceParams.toString()}`);
 	if (price.liquidityAvailable) {
 		logger.success('[Check Price] Liquidity is available for the swap');
@@ -81,6 +85,8 @@ const fetchPrice = async (
 
 /**
  * Set the allowance for Permit2 to spend token
+ * @dev We must approve to Permit2 contract, not the Settler contract!
+ *       Once anyone approves the Settler contract, their tokens will be immediately stolen!
  * @param token - The token contract
  * @param quote - The quote response from 0x API
  * @param sellAmount - The amount of tokens to sell
@@ -89,36 +95,21 @@ const fetchPrice = async (
 const checkAndSetAllowance = async (token: any, quote: any, sellAmount: string) => {
 	logger.info('🔑 ERC-20 token detected, checking allowance...');
 
-	let spender;
+	let spender = ZERO_ADDRESS;
 
-	// Due to inconsistencies between the API and documentation, it is necessary to be compatible with both situations.
+	// Only when the `allowance` is insufficient will the `spender` be returned.
 	if (quote?.issues?.allowance?.spender != null) {
 		spender = quote.issues.allowance.spender;
-	} else if (quote?.permit2?.eip712?.message?.spender != null) {
-		spender = quote.permit2.eip712.message.spender;
-	} else {
-		throw new Error('No spender address found in quote response');
 	}
 
-	if (!spender) {
-		throw new Error('No spender address found in quote response');
-	}
-
-	const currentAllowance = await token.read.allowance([
-		walletClient.account?.address as Hex,
-		spender,
-	]);
-
-	if (BigInt(sellAmount) > currentAllowance) {
-		try {
-			await approveERC20(token.address, spender, sellAmount);
-		} catch (error) {
-			logger.error(`Error approving Permit2: ${error}`);
-			throw error;
-		}
-	} else {
+	// The spender is still ZERO_ADDRESS, so we have enough allowance.
+	if (spender === ZERO_ADDRESS) {
 		logger.info('Token already approved for Permit2');
+		return;
 	}
+
+	// Not enough allowance, approve the spender.
+	await approveERC20(token.address, spender, sellAmount);
 };
 
 /**
@@ -192,7 +183,13 @@ const signPermit2 = async (quote: any) => {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const submitTransaction = async (quote: any, signature: Hex | undefined): Promise<string> => {
-	if (signature && quote.transaction.data) {
+	if (!signature || !quote.transaction.data) {
+		logger.error('Failed to obtain a signature or transaction data.');
+		throw new Error('Failed to obtain a signature or transaction data.');
+	}
+
+	try {
+		// Sign transaction
 		const signedTransaction = await walletClient.signTransaction({
 			account: walletClient.account as Account,
 			chain: base,
@@ -202,17 +199,35 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			gasPrice: !!quote?.transaction.gasPrice ? BigInt(quote?.transaction.gasPrice) : undefined,
 		});
 
+		// Simulate transaction
+		// TODO: SubmitTransaction failed: MethodNotFoundRpcError: The method "eth_simulateV1" does not exist / is not available
+		await publicClientHTTP.simulateCalls({
+			account: walletClient.account?.address as Hex,
+			calls: [
+				{
+					data: signedTransaction,
+					to: quote?.transaction.to,
+				},
+			],
+		});
+
+		// Send transaction
 		const hash = await walletClient.sendRawTransaction({
 			serializedTransaction: signedTransaction,
 		});
 
-		// We will check the receipt in the defaultSwap function
-		// const receipt = await publicClientHTTP.waitForTransactionReceipt({ hash });
+		// Wait for transaction receipt
+		const receipt = await publicClientHTTP.waitForTransactionReceipt({ hash });
+		if (receipt.status === 'reverted') {
+			throw new Error('Transaction reverted');
+		}
+
+		logger.success(`🎉 [0xSwap] Transaction confirmed, hash: ${hash}`);
 
 		return hash;
-	} else {
-		logger.error('Failed to obtain a signature, transaction not sent.');
-		throw new Error('Failed to obtain a signature, transaction not sent.');
+	} catch (error) {
+		logger.error(`SubmitTransaction failed: ${error}`);
+		throw error;
 	}
 };
 
@@ -242,12 +257,9 @@ const executeSwap = async (
 	const quote = await fetchQuote(priceParams);
 	await checkAndSetAllowance(sellToken, quote, sellAmountInput);
 	const signature = await signPermit2(quote);
-	const hash = await submitTransaction(quote, signature);
+	await submitTransaction(quote, signature);
 
-	return {
-		hash,
-		minBuyAmount: quote.minBuyAmount,
-	};
+	return quote.minBuyAmount;
 };
 
 /**
@@ -270,57 +282,14 @@ export const defaultSwap = async (
 		logger.info(
 			`🧭 Executing swap from ${tokenToSellAddress} to ${tokenToBuyAddress} with ${sellAmount} (wei)`
 		);
-		let { hash, minBuyAmount } = await executeSwap(
+		const minBuyAmount = await executeSwap(
 			tokenToSellAddress,
 			tokenToBuyAddress,
 			sellAmount,
 			slippageBps
 		);
 
-		const result = await publicClientHTTP.waitForTransactionReceipt({
-			hash: hash as `0x${string}`,
-		});
-
-		// Why do we need to retry? This is to prevent slippage issues. Although setting it to 1% will
-		// succeed in most cases, but sometimes it will fail. Transactions fail because of slippage,
-		// but they will still confirm on chain.
-		// So we retry if the 0xSwap's atomic trading failed.
-		let retries = 0;
-		const maxRetries = 5;
-		while (retries < maxRetries) {
-			if (result.status === 'success') {
-				logger.success(
-					`🎉 [0xSwap] Transaction confirmed${retries > 0 ? ` on retry attempt ${retries}` : ''}, hash: ${hash}`
-				);
-				return minBuyAmount;
-			}
-			retries++;
-			logger.error(`🚨 Transaction failed${retries > 1 ? ` on retry attempt ${retries - 1}` : ''}`);
-			if (retries === maxRetries) {
-				throw new Error('Transaction failed after maximum retries');
-			}
-			logger.info(`Retrying transaction (${retries}/${maxRetries}) after 1 second...`);
-			await new Promise(resolve => setTimeout(resolve, 1000));
-			try {
-				const { hash: newHash, minBuyAmount: newMinBuyAmount } = await executeSwap(
-					tokenToSellAddress,
-					tokenToBuyAddress,
-					sellAmount,
-					slippageBps
-				);
-				hash = newHash;
-				minBuyAmount = newMinBuyAmount;
-				const retryResult = await publicClientHTTP.waitForTransactionReceipt({
-					hash: hash as `0x${string}`,
-				});
-				result.status = retryResult.status;
-			} catch (error) {
-				logger.error(`Error during retry attempt ${retries}: ${error}`);
-				if (retries === maxRetries) {
-					throw new Error(`Transaction failed after maximum retries: ${error}`);
-				}
-			}
-		}
+		return minBuyAmount;
 	} catch (error) {
 		logger.error(`Error executing swap: ${error}`);
 	}

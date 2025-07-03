@@ -8,6 +8,8 @@ import {
 } from './clients.ts';
 import logger from './logger.ts';
 
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Hex;
+
 /**
  * Withdraws the asset to sell from the contract
  * @param orderIndex - The ID of the AGI to withdraw for
@@ -74,7 +76,7 @@ export async function depositAsset(orderIndex: number, assetToBuy: string, amoun
  * @param amount - The amount of tokens to approve
  */
 export async function approveERC20(tokenAddress: string, spenderAddress: string, amount: string) {
-	logger.info(`Approving ${amount} tokens for spender ${spenderAddress}`);
+	logger.process(`Approving ${amount}(wei) token ${tokenAddress} for spender ${spenderAddress}...`);
 
 	const { request } = await publicClientHTTP.simulateContract({
 		address: tokenAddress as Hex,
