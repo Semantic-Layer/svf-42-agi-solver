@@ -70,9 +70,6 @@ const fetchPrice = async (
 
 	const price = await priceResponse.json();
 
-	// TODO: remove it when the PR is ready
-	console.log('debug price: ', JSON.stringify(price, null, 2));
-
 	logger.event(`🔍 API Request: ${ZERO_EX_API_BASE_URL}/price?${priceParams.toString()}`);
 	if (price.liquidityAvailable) {
 		logger.success('[Check Price] Liquidity is available for the swap');
@@ -188,6 +185,10 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 		throw new Error('Failed to obtain a signature or transaction data.');
 	}
 
+	const nonce = await publicClientHTTP.getTransactionCount({
+		address: walletClient.account?.address as Hex,
+	});
+
 	try {
 		// Sign transaction
 		const signedTransaction = await walletClient.signTransaction({
@@ -197,18 +198,7 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			to: quote?.transaction.to,
 			data: quote.transaction.data,
 			gasPrice: !!quote?.transaction.gasPrice ? BigInt(quote?.transaction.gasPrice) : undefined,
-		});
-
-		// Simulate transaction
-		// TODO: SubmitTransaction failed: MethodNotFoundRpcError: The method "eth_simulateV1" does not exist / is not available
-		await publicClientHTTP.simulateCalls({
-			account: walletClient.account?.address as Hex,
-			calls: [
-				{
-					data: signedTransaction,
-					to: quote?.transaction.to,
-				},
-			],
+			nonce: nonce,
 		});
 
 		// Send transaction
@@ -216,14 +206,7 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			serializedTransaction: signedTransaction,
 		});
 
-		// Wait for transaction receipt
-		const receipt = await publicClientHTTP.waitForTransactionReceipt({ hash });
-		if (receipt.status === 'reverted') {
-			throw new Error('Transaction reverted');
-		}
-
-		logger.success(`🎉 [0xSwap] Transaction confirmed, hash: ${hash}`);
-
+		// We don't check the transaction receipt here, we check in the `defaultSwap` function.
 		return hash;
 	} catch (error) {
 		logger.error(`SubmitTransaction failed: ${error}`);
@@ -257,9 +240,9 @@ const executeSwap = async (
 	const quote = await fetchQuote(priceParams);
 	await checkAndSetAllowance(sellToken, quote, sellAmountInput);
 	const signature = await signPermit2(quote);
-	await submitTransaction(quote, signature);
+	const hash = await submitTransaction(quote, signature);
 
-	return quote.minBuyAmount;
+	return { hash, minBuyAmount: quote.minBuyAmount };
 };
 
 /**
@@ -282,14 +265,68 @@ export const defaultSwap = async (
 		logger.info(
 			`🧭 Executing swap from ${tokenToSellAddress} to ${tokenToBuyAddress} with ${sellAmount} (wei)`
 		);
-		const minBuyAmount = await executeSwap(
+		let { hash, minBuyAmount } = await executeSwap(
 			tokenToSellAddress,
 			tokenToBuyAddress,
 			sellAmount,
 			slippageBps
 		);
 
-		return minBuyAmount;
+		const result = await publicClientHTTP.waitForTransactionReceipt({
+			hash: hash as `0x${string}`,
+		});
+
+		/* 
+			[Why do we need to retry?]
+
+			- Transactions may revert due to slippage, but the transaction will still be confirmed, 
+			  which will affect the AGI status settings.
+
+			- The transaction reverts due to slippage, but it is not caught by `try-catch` in `AGIQueueManager` because it 
+			  was confirm on-chain. It incorrectly sets the status because the transaction reverts and does not truly succeed.
+
+			- You will think why don't we make a simulation? Because: Even if the simulation passes, the actual 
+			  transaction may still revert because the slippage.
+
+			Therefore, we need to make additional retries for `0xSwap` transactions, and only if the transaction is not 
+			reverted and successfully confirmed will we continue to execute.
+		*/
+		let retries = 0;
+		const maxRetries = 5;
+		while (retries < maxRetries) {
+			if (result.status === 'success') {
+				logger.success(
+					`🎉 [0xSwap] Transaction confirmed${retries > 0 ? ` on retry attempt ${retries}` : ''}, hash: ${hash}`
+				);
+				return minBuyAmount;
+			}
+			retries++;
+			logger.error(`🚨 Transaction failed${retries > 1 ? ` on retry attempt ${retries - 1}` : ''}`);
+			if (retries === maxRetries) {
+				throw new Error('Transaction failed after maximum retries');
+			}
+			logger.info(`Retrying transaction (${retries}/${maxRetries}) after 1 second...`);
+			await new Promise(resolve => setTimeout(resolve, 1000));
+			try {
+				const { hash: newHash, minBuyAmount: newMinBuyAmount } = await executeSwap(
+					tokenToSellAddress,
+					tokenToBuyAddress,
+					sellAmount,
+					slippageBps
+				);
+				hash = newHash;
+				minBuyAmount = newMinBuyAmount;
+				const retryResult = await publicClientHTTP.waitForTransactionReceipt({
+					hash: hash as `0x${string}`,
+				});
+				result.status = retryResult.status;
+			} catch (error) {
+				logger.error(`Error during retry attempt ${retries}: ${error}`);
+				if (retries === maxRetries) {
+					throw new Error(`Transaction failed after maximum retries: ${error}`);
+				}
+			}
+		}
 	} catch (error) {
 		logger.error(`Error executing swap: ${error}`);
 	}
