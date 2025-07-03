@@ -84,6 +84,7 @@ const fetchPrice = async (
  * @param quote - The quote response from 0x API
  * @param sellAmount - The amount of tokens to sell
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const checkAndSetAllowance = async (token: any, quote: any, sellAmount: string) => {
 	logger.info('🔑 ERC-20 token detected, checking allowance...');
 
@@ -191,10 +192,6 @@ const signPermit2 = async (quote: any) => {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const submitTransaction = async (quote: any, signature: Hex | undefined): Promise<string> => {
-	const nonce = await publicClientHTTP.getTransactionCount({
-		address: walletClient.account?.address as Hex,
-	});
-
 	if (signature && quote.transaction.data) {
 		const signedTransaction = await walletClient.signTransaction({
 			account: walletClient.account as Account,
@@ -203,7 +200,6 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			to: quote?.transaction.to,
 			data: quote.transaction.data,
 			gasPrice: !!quote?.transaction.gasPrice ? BigInt(quote?.transaction.gasPrice) : undefined,
-			nonce: nonce,
 		});
 
 		const hash = await walletClient.sendRawTransaction({
