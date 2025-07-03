@@ -206,8 +206,9 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			serializedTransaction: signedTransaction,
 		});
 
-		logger.success(`Transaction hash: ${hash}`);
-		logger.item(`📒 See tx details at https://basescan.org/tx/${hash}. Checking the status...`);
+		// We will check the receipt in the defaultSwap function
+		// const receipt = await publicClientHTTP.waitForTransactionReceipt({ hash });
+
 		return hash;
 	} else {
 		logger.error('Failed to obtain a signature, transaction not sent.');
@@ -276,10 +277,14 @@ export const defaultSwap = async (
 			slippageBps
 		);
 
-		// Wait for transaction to be mined
 		const result = await publicClientHTTP.waitForTransactionReceipt({
 			hash: hash as `0x${string}`,
 		});
+
+		// Why do we need to retry? This is to prevent slippage issues. Although setting it to 1% will
+		// succeed in most cases, but sometimes it will fail. Transactions fail because of slippage,
+		// but they will still confirm on chain.
+		// So we retry if the 0xSwap's atomic trading failed.
 		let retries = 0;
 		const maxRetries = 5;
 		while (retries < maxRetries) {
