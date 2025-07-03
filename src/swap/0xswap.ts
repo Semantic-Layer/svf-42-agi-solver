@@ -35,21 +35,21 @@ const getTokenContract = (address: string) => {
  * @param sellToken - The address of the token to sell
  * @param buyToken - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
+ * @param slippageBps - The slippage basis points (e.g., 100 for 1%)
  * @returns The price of the token swap
  */
 const fetchPrice = async (
 	sellToken: string,
 	buyToken: string,
 	sellAmount: string,
-	slippagePercentage: number = 100
+	slippageBps: number = 100
 ) => {
 	const priceParams = new URLSearchParams({
 		chainId: chainId.toString(),
 		sellToken,
 		buyToken,
 		sellAmount,
-		slippagePercentage: slippagePercentage.toString(),
+		slippageBps: slippageBps.toString(),
 		taker: walletClient.account?.address as Hex,
 	});
 	logger.table('Route Params', {
@@ -57,7 +57,7 @@ const fetchPrice = async (
 		sellToken: sellToken,
 		buyToken: buyToken,
 		sellAmount: sellAmount,
-		slippagePercentage: slippagePercentage,
+		slippageBps: slippageBps.toString(),
 		taker: walletClient.account?.address,
 	});
 
@@ -107,14 +107,14 @@ const checkAndSetAllowance = async (token: any, price: any) => {
  * @param sellToken - The address of the token to sell
  * @param buyToken - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
+ * @param slippageBps - The slippage basis points (e.g., 100 for 1%)
  * @returns The quote of the token swap
  */
 const fetchQuote = async (
 	sellToken: string,
 	buyToken: string,
 	sellAmount: string,
-	slippagePercentage: number = 100
+	slippageBps: number = 100
 ) => {
 	logger.info(`Fetching quote to swap ${sellAmount} (wei) of ${sellToken} for ${buyToken}`);
 	const quoteParams = new URLSearchParams({
@@ -122,7 +122,7 @@ const fetchQuote = async (
 		sellToken,
 		buyToken,
 		sellAmount,
-		slippagePercentage: slippagePercentage.toString(),
+		slippageBps: slippageBps.toString(),
 		taker: walletClient.account?.address as Hex,
 	});
 
@@ -215,14 +215,14 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
  * @param tokenToSellAddress - The address of the token to sell
  * @param tokenToBuyAddress - The address of the token to buy
  * @param sellAmountInput - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
+ * @param slippageBps - The slippage basis points (e.g., 100 for 1%)
  * @returns The minimum buy amount of the token swap
  */
 const executeSwap = async (
 	tokenToSellAddress: string,
 	tokenToBuyAddress: string,
 	sellAmountInput: string,
-	slippagePercentage: number = 100
+	slippageBps: number = 100
 ) => {
 	const sellToken = getTokenContract(tokenToSellAddress);
 
@@ -230,14 +230,14 @@ const executeSwap = async (
 		tokenToSellAddress,
 		tokenToBuyAddress,
 		sellAmountInput,
-		slippagePercentage
+		slippageBps
 	);
 	await checkAndSetAllowance(sellToken, price);
 	const quote = await fetchQuote(
 		tokenToSellAddress,
 		tokenToBuyAddress,
 		sellAmountInput,
-		slippagePercentage
+		slippageBps
 	);
 	const signature = await signPermit2(quote);
 	const hash = await submitTransaction(quote, signature);
@@ -254,14 +254,14 @@ const executeSwap = async (
  * @param tokenToSellAddress - The address of the token to sell
  * @param tokenToBuyAddress - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
- * @param slippagePercentage - The slippage percentage (e.g., 100 for 1%)
+ * @param slippageBps - The slippage basis points (e.g., 100 for 1%)
  * @returns The minimum buy amount of the token swap
  */
 export const defaultSwap = async (
 	tokenToSellAddress: string,
 	tokenToBuyAddress: string,
 	sellAmount: string,
-	slippagePercentage: number = 100
+	slippageBps: number = 100
 ) => {
 	try {
 		// Execute swap
@@ -272,7 +272,7 @@ export const defaultSwap = async (
 			tokenToSellAddress,
 			tokenToBuyAddress,
 			sellAmount,
-			slippagePercentage
+			slippageBps
 		);
 
 		// Wait for transaction to be mined
@@ -300,7 +300,7 @@ export const defaultSwap = async (
 					tokenToSellAddress,
 					tokenToBuyAddress,
 					sellAmount,
-					slippagePercentage
+					slippageBps
 				);
 				hash = newHash;
 				minBuyAmount = newMinBuyAmount;
