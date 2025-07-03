@@ -1,9 +1,10 @@
 import { config as dotenv } from 'dotenv';
-import { getContract, erc20Abi, maxUint256, concat, numberToHex, size } from 'viem';
+import { getContract, erc20Abi, concat, numberToHex, size } from 'viem';
 import type { Account, Hex } from 'viem';
 import { base } from 'viem/chains';
 import { chainId, publicClientHTTP, walletClient } from '../clients.ts';
 import logger from '../logger.ts';
+import { approveERC20 } from '../utils.ts';
 
 // load env vars
 dotenv();
@@ -74,31 +75,47 @@ const fetchPrice = async (
 		logger.error('[Check Price] Liquidity is not available for the swap, please try again later');
 		throw new Error('Liquidity not available');
 	}
-	return { price, priceParams };
+	return priceParams;
 };
 
 /**
- * Set the allowance
+ * Set the allowance for Permit2 to spend token
  * @param token - The token contract
- * @param price - The price of the token swap
+ * @param quote - The quote response from 0x API
+ * @param sellAmount - The amount of tokens to sell
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const checkAndSetAllowance = async (token: any, price: any) => {
+const checkAndSetAllowance = async (token: any, quote: any, sellAmount: string) => {
 	logger.info('🔑 ERC-20 token detected, checking allowance...');
-	if (price.issues.allowance !== null) {
+
+	let spender;
+
+	// Due to inconsistencies between the API and documentation, it is necessary to be compatible with both situations.
+	if (quote?.issues?.allowance?.spender != null) {
+		spender = quote.issues.allowance.spender;
+	} else if (quote?.permit2?.eip712?.message?.spender != null) {
+		spender = quote.permit2.eip712.message.spender;
+	} else {
+		throw new Error('No spender address found in quote response');
+	}
+
+	if (!spender) {
+		throw new Error('No spender address found in quote response');
+	}
+
+	const currentAllowance = await token.read.allowance([
+		walletClient.account?.address as Hex,
+		spender,
+	]);
+
+	if (BigInt(sellAmount) > currentAllowance) {
 		try {
-			const { request } = await token.simulate.approve([
-				price.issues.allowance.spender,
-				maxUint256,
-			]);
-			const hash = await token.write.approve(request.args);
-			logger.event(`Approved Permit2 to spend sellToken. ${hash}`);
-			await publicClientHTTP.waitForTransactionReceipt({ hash });
+			await approveERC20(token.address, spender, sellAmount);
 		} catch (error) {
 			logger.error(`Error approving Permit2: ${error}`);
+			throw error;
 		}
 	} else {
-		logger.info('sellToken already approved for Permit2');
+		logger.info('Token already approved for Permit2');
 	}
 };
 
@@ -218,14 +235,15 @@ const executeSwap = async (
 ) => {
 	const sellToken = getTokenContract(tokenToSellAddress);
 
-	const { price, priceParams } = await fetchPrice(
+	const priceParams = await fetchPrice(
 		tokenToSellAddress,
 		tokenToBuyAddress,
 		sellAmountInput,
 		slippageBps
 	);
-	await checkAndSetAllowance(sellToken, price);
+
 	const quote = await fetchQuote(priceParams);
+	await checkAndSetAllowance(sellToken, quote, sellAmountInput);
 	const signature = await signPermit2(quote);
 	const hash = await submitTransaction(quote, signature);
 
