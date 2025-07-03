@@ -30,7 +30,7 @@ export async function withdrawAsset(orderIndex: number) {
 		if (receipt.status === 'reverted') {
 			throw new Error('Withdraw transaction failed');
 		}
-		logger.item(`🎉 [Order ${orderIndex}]: withdraw txn hash: ${hash}`);
+		logger.success(`🎉 [Order ${orderIndex}]: withdraw txn hash: ${hash}`);
 	} catch (error) {
 		logger.subItem(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
 		throw error;
@@ -62,7 +62,7 @@ export async function depositAsset(orderIndex: number, assetToBuy: string, amoun
 		if (receipt.status === 'reverted') {
 			throw new Error('Deposit transaction failed');
 		}
-		logger.item(`🎉 [Order ${orderIndex}]: deposit txn hash: ${hash}`);
+		logger.success(`🎉 [Order ${orderIndex}]: deposit txn hash: ${hash}`);
 	} catch (error) {
 		logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
 		throw error;

@@ -1,5 +1,5 @@
 import { config as dotenv } from 'dotenv';
-import { getContract, erc20Abi, concat, numberToHex, size } from 'viem';
+import { concat, numberToHex, size } from 'viem';
 import type { Account, Hex } from 'viem';
 import { base } from 'viem/chains';
 import { chainId, publicClientHTTP, walletClient } from '../clients.ts';
@@ -19,19 +19,6 @@ const headers = new Headers({
 	'0x-api-key': ZERO_EX_API_KEY,
 	'0x-version': 'v2',
 });
-
-/**
- * Helper function to get the token contract
- * @param address - The address of the token contract
- * @returns The token contract
- */
-const getTokenContract = (address: string) => {
-	return getContract({
-		address: address as `0x${string}`,
-		abi: erc20Abi,
-		client: publicClientHTTP,
-	});
-};
 
 /**
  * Fetch price for token swap
@@ -83,18 +70,20 @@ const fetchPrice = async (
 /**
  * Set the allowance for Permit2 to spend token
  * @dev We must approve to Permit2 contract, not the Settler contract!
- *       Once anyone approves the Settler contract, their tokens will be immediately stolen!
- * @param token - The token contract
+ *      Once anyone approves the Settler contract, their tokens will be immediately stolen!
+ *      Check the reference: https://0x.org/docs/developer-resources/core-concepts/contracts#a-note-about-setting-token-allowances
+ * @param tokenAddress - The token contract address
  * @param quote - The quote response from 0x API
  * @param sellAmount - The amount of tokens to sell
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const checkAndSetAllowance = async (token: any, quote: any, sellAmount: string) => {
+const checkAndSetAllowance = async (tokenAddress: string, quote: any, sellAmount: string) => {
 	logger.info('🔑 ERC-20 token detected, checking allowance...');
 
 	let spender = ZERO_ADDRESS;
 
-	// Only when the `allowance` is insufficient will the `spender` be returned.
+	// Only when the `allowance` is insufficient will the `spender` be returned. Otherwise,
+	// the returned quote's allowance will be null.
 	if (quote?.issues?.allowance?.spender != null) {
 		spender = quote.issues.allowance.spender;
 	}
@@ -106,7 +95,7 @@ const checkAndSetAllowance = async (token: any, quote: any, sellAmount: string) 
 	}
 
 	// Not enough allowance, approve the spender.
-	await approveERC20(token.address, spender, sellAmount);
+	await approveERC20(tokenAddress, spender, sellAmount);
 };
 
 /**
@@ -148,12 +137,8 @@ const fetchQuote = async (priceParams: URLSearchParams) => {
 const signPermit2 = async (quote: any) => {
 	let signature: Hex | undefined;
 	if (quote.permit2?.eip712) {
-		try {
-			signature = await walletClient.signTypedData(quote.permit2.eip712);
-			logger.info('Signed permit2 message from quote response');
-		} catch (error) {
-			logger.error(`Error signing permit2 coupon: ${error}`);
-		}
+		signature = await walletClient.signTypedData(quote.permit2.eip712);
+		logger.info('Signed permit2 message from quote response');
 
 		if (signature && quote?.transaction?.data) {
 			const signatureLengthInHex = numberToHex(size(signature), {
@@ -185,7 +170,8 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 		throw new Error('Failed to obtain a signature or transaction data.');
 	}
 
-	const nonce = await publicClientHTTP.getTransactionCount({
+	// Get the current nonce of the wallet
+	const currentNonce = await publicClientHTTP.getTransactionCount({
 		address: walletClient.account?.address as Hex,
 	});
 
@@ -198,7 +184,7 @@ const submitTransaction = async (quote: any, signature: Hex | undefined): Promis
 			to: quote?.transaction.to,
 			data: quote.transaction.data,
 			gasPrice: !!quote?.transaction.gasPrice ? BigInt(quote?.transaction.gasPrice) : undefined,
-			nonce: nonce,
+			nonce: currentNonce, // The `signTransaction()` function does not automatically derive the nonce, so it needs to be input manually.
 		});
 
 		// Send transaction
@@ -228,8 +214,6 @@ const executeSwap = async (
 	sellAmountInput: string,
 	slippageBps: number = 100
 ) => {
-	const sellToken = getTokenContract(tokenToSellAddress);
-
 	const priceParams = await fetchPrice(
 		tokenToSellAddress,
 		tokenToBuyAddress,
@@ -238,7 +222,7 @@ const executeSwap = async (
 	);
 
 	const quote = await fetchQuote(priceParams);
-	await checkAndSetAllowance(sellToken, quote, sellAmountInput);
+	await checkAndSetAllowance(tokenToSellAddress, quote, sellAmountInput);
 	const signature = await signPermit2(quote);
 	const hash = await submitTransaction(quote, signature);
 
@@ -248,6 +232,8 @@ const executeSwap = async (
 /**
  * Default swap function
  * @dev Example: defaultSwap('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', '0x4200000000000000000000000000000000000006', '1000', 0.01) USDC -> WETH
+ * @dev We set the slippage to 1% by default, and we will retry failed/reverted transactions up to 5 times.
+ *      The reason for the transaction failure/reverted is usually due to exceeding the slippage tolerance.
  * @param tokenToSellAddress - The address of the token to sell
  * @param tokenToBuyAddress - The address of the token to buy
  * @param sellAmount - The amount of the token to sell
@@ -296,12 +282,14 @@ export const defaultSwap = async (
 		while (retries < maxRetries) {
 			if (result.status === 'success') {
 				logger.success(
-					`🎉 [0xSwap] Transaction confirmed${retries > 0 ? ` on retry attempt ${retries}` : ''}, hash: ${hash}`
+					`🎉 [0xSwap] The 0xSwap transaction is successful and the swap is completed. Hash: ${hash}`
 				);
 				return minBuyAmount;
 			}
 			retries++;
-			logger.error(`🚨 Transaction failed${retries > 1 ? ` on retry attempt ${retries - 1}` : ''}`);
+			logger.error(
+				`🚨 Transaction failed/reverted ${retries > 1 ? ` on retry attempt ${retries - 1}` : ''}`
+			);
 			if (retries === maxRetries) {
 				throw new Error('Transaction failed after maximum retries');
 			}
