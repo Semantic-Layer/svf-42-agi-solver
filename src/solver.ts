@@ -26,8 +26,8 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 		const batchResult = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
-			functionName: 'getProcessedOrderIdsRange',
-			args: [startIndex, endIndex + 1],
+			functionName: 'getProcessedAGIs',
+			args: [i, batchEndIndex + 1],
 		})) as number[];
 
 		logger.item(`Retrieved ${batchResult.length} processed tasks in batch ${currentBatch}`);
