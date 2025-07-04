@@ -16,12 +16,12 @@
  *       - Contract status becomes 1
  *
  *    b. After Withdraw (1 - DispensedPendingProceeds):
- *       - Set internal status to 4 (SwapInitiated)
+ *       - Set internal status to 3 (SwapInitiated)
  *       - Begin swap operation
  *
  *    c. Swap Initiated (3 - SwapInitiated):
  *       - Perform swap operation
- *       - Set internal status to 3 (SwapCompleted) when swap is done
+ *       - Set internal status to 4 (SwapCompleted) when swap is done
  *
  *    d. After Swap (4 - SwapCompleted):
  *       - Deposit swapped assets back to contract
@@ -49,12 +49,12 @@
  *    - Maintain FIFO order while allowing other items to be processed
  */
 
-import { walletClient, publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
+import { publicClientHTTP, agiContractAddress, agiContractABI } from './clients.ts';
 import { type Hex } from 'viem';
 import { type AgentGeneratedIntent } from './types.ts';
 import { logger } from './logger.ts';
-import { defaultSwap } from './swap/lifiSwap.ts';
-import { checkTransactionReceipt } from './utils.ts';
+import { defaultSwap } from './swap/0xswap.ts';
+import { depositAsset, withdrawAsset } from './utils.ts';
 import { SwapError } from './errors.ts';
 import { failedSwapsDB } from './db/failedSwapsDB.ts';
 
@@ -190,7 +190,7 @@ export class AGIQueueManager {
 		}
 
 		this.queue.push(agiId);
-		logger.info(`Added AGI ${agiId} to queue. Queue length: ${this.queue.length}`);
+		logger.info(`✅ Added AGI ${agiId} to queue. Queue length: ${this.queue.length}`);
 
 		// Start checking the queue if not already running
 		this.startQueueCheck();
@@ -289,7 +289,7 @@ export class AGIQueueManager {
 			// 1. Use contract status as primary source of truth
 			// 2. Only use internal SwapCompleted status when:
 			//    - Contract status is 1 (DispensedPendingProceeds)
-			//    - AND we have an internal status (not undefined)
+			//    - And we have an internal status (not undefined)
 			let currentStatus: ExtendedOrderStatus;
 
 			if (
@@ -381,7 +381,7 @@ export class AGIQueueManager {
 	 * - Withdraws asset from contract
 	 */
 	private async handlePendingDispense(agiId: number) {
-		await this.withdrawAsset(agiId);
+		await withdrawAsset(agiId);
 	}
 
 	/**
@@ -398,16 +398,18 @@ export class AGIQueueManager {
 	 * - Performs swap and stores result
 	 */
 	private async handleSwapInitiated(agiId: number, agi: AgentGeneratedIntent) {
-		// Check if swap is already in process
-		logger.info(`checking if swap is already in process`);
+		// Check if swap is already in process or completed
 		const existingSwap = this.swapResults.get(agiId);
+		logger.info(
+			`checking if swap ${agiId} is already in process or completed, status: ${existingSwap?.status}`
+		);
 		if (existingSwap) {
-			logger.info(`swap already in process: ${existingSwap.status}`);
+			logger.info(`swap ${agiId} already in process: ${existingSwap.status}`);
 			if (existingSwap.status === 'pending') {
-				logger.info(`AGI ${agiId} swap already in process, waiting...`);
+				logger.info(`swap ${agiId} already in process, waiting...`);
 				return;
 			} else if (existingSwap.status === 'completed') {
-				logger.info(`AGI ${agiId} swap already completed`);
+				logger.info(`swap ${agiId} already completed`);
 				this.orderStatus.set(agiId, ExtendedOrderStatus.SwapCompleted);
 				return;
 			} else if (this.shouldSkipTask(agiId)) {
@@ -437,12 +439,11 @@ export class AGIQueueManager {
 		}
 		try {
 			logger.info(`starting swap`);
-			const amountToBuy = await defaultSwap({
-				fromToken: agi.assetToSell,
-				toToken: agi.assetToBuy,
-				fromAmount: agi.amountToSell.toString(),
-				fromAddress: walletClient.account!.address,
-			});
+			const amountToBuy = await defaultSwap(
+				agi.assetToSell,
+				agi.assetToBuy,
+				agi.amountToSell.toString()
+			);
 			this.swapResults.set(agiId, {
 				...currentSwap,
 				amountToBuy: parseInt(amountToBuy),
@@ -470,7 +471,16 @@ export class AGIQueueManager {
 	private async handleSwapCompleted(agiId: number) {
 		const swapResult = this.swapResults.get(agiId);
 		if (swapResult) {
-			await this.depositAsset(agiId, swapResult.amountToBuy ?? 0);
+			// get the assetToBuy
+			const agi = (await publicClientHTTP.readContract({
+				address: agiContractAddress as Hex,
+				abi: agiContractABI,
+				functionName: 'viewAGI',
+				args: [agiId],
+			})) as AgentGeneratedIntent;
+			const assetToBuy = agi.assetToBuy;
+
+			await depositAsset(agiId, assetToBuy, swapResult.amountToBuy ?? 0);
 			this.orderStatus.set(agiId, ExtendedOrderStatus.ProceedsReceived);
 
 			// If an attempt is successful, we should delete the corresponding failure record from the database.
@@ -492,56 +502,6 @@ export class AGIQueueManager {
 		const index = this.queue.indexOf(agiId);
 		if (index > -1) {
 			this.queue.splice(index, 1);
-		}
-	}
-
-	/**
-	 * Withdraws the asset to sell from the contract
-	 * @param orderIndex - The ID of the AGI to withdraw for
-	 */
-	private async withdrawAsset(orderIndex: number) {
-		try {
-			logger.process(`Withdrawing asset for AGI ${orderIndex}`);
-			const { request } = await publicClientHTTP.simulateContract({
-				account: walletClient.account,
-				address: agiContractAddress as Hex,
-				abi: agiContractABI,
-				functionName: 'withdrawAsset',
-				args: [orderIndex],
-			});
-
-			const hash = await walletClient.writeContract(request);
-			logger.item(`[Order ${orderIndex}]: withdraw txn hash: ${hash}`);
-			await checkTransactionReceipt(hash, `[withdraw txn hash for AGI ${orderIndex}]`);
-		} catch (error) {
-			logger.subItem(`Error withdrawing asset for AGI ${orderIndex}: ${error}`);
-			throw error;
-		}
-	}
-
-	/**
-	 * Deposits the swapped assets back to the contract
-	 * @param orderIndex - The ID of the AGI to deposit for
-	 * @param amount - The amount of tokens to deposit
-	 */
-	private async depositAsset(orderIndex: number, amount: number) {
-		try {
-			logger.process(`Depositing ${amount} for AGI ${orderIndex}`);
-			const { request } = await publicClientHTTP.simulateContract({
-				account: walletClient.account,
-				address: agiContractAddress as Hex,
-				abi: agiContractABI,
-				functionName: 'depositAsset',
-				args: [orderIndex, amount],
-			});
-
-			await walletClient.writeContract(request);
-			const hash = await walletClient.writeContract(request);
-			logger.item(`[Order ${orderIndex}]: deposit txn hash: ${hash}`);
-			await checkTransactionReceipt(hash, `[deposit txn hash for AGI ${orderIndex}]`);
-		} catch (error) {
-			logger.subItem(`Error depositing asset for AGI ${orderIndex}: ${error}`);
-			throw error;
 		}
 	}
 

@@ -24,6 +24,9 @@
 		"fmt": "prettier --write .",
 		"fmt:check": "prettier --check .",
 		"fmt:src": "prettier --write \"src/**/*.{ts,tsx}\"",
+		"start:service:svf-agi-solver": "pm2 start dist/index.js --name=\"svf-agi-solver\" --restart-delay=3000 --max-restarts=10",
+		"stop:service:svf-agi-solver": "pm2 stop svf-agi-solver",
+		"delete:service:svf-agi-solver": "pm2 delete svf-agi-solver",
 		"lint": "eslint . --max-warnings 0",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "husky install",
@@ -33,15 +36,19 @@
 		"*": "prettier --ignore-unknown --write"
 	},
 	"dependencies": {
-		"@lifi/sdk": "^3.6.5",
+		"@lifi/sdk": "=3.6.5",
 		"better-sqlite3": "^11.9.1",
+		"chalk": "^5.4.1",
 		"dotenv": "^16.4.7",
+		"ethers": "5",
+		"figlet": "^1.8.1",
 		"viem": "^2.23.13",
 		"winston": "^3.17.0"
 	},
 	"devDependencies": {
 		"@eslint/js": "9.22.0",
 		"@types/better-sqlite3": "^7.6.9",
+		"@types/figlet": "^1.7.0",
 		"@types/node": "22.13.10",
 		"eslint": "9.22.0",
 		"husky": "9.1.7",
