@@ -37,6 +37,7 @@
 	},
 	"dependencies": {
 		"@lifi/sdk": "=3.6.5",
+		"async-mutex": "^0.5.0",
 		"better-sqlite3": "^11.9.1",
 		"chalk": "^5.4.1",
 		"dotenv": "^16.4.7",

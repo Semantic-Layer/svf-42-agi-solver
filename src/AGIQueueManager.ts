@@ -57,6 +57,7 @@ import { defaultSwap } from './swap/0xswap.ts';
 import { depositAsset, withdrawAsset } from './utils.ts';
 import { SwapError } from './errors.ts';
 import { failedSwapsDB } from './db/failedSwapsDB.ts';
+import { Mutex } from 'async-mutex';
 
 /**
  * Represents the result of a swap operation
@@ -533,6 +534,33 @@ export class AGIQueueManager {
 			count: failedTasks.length,
 			ids: failedTasks,
 		};
+	}
+
+	checkIfTaskIsInAgiQueue(messageId: number): boolean {
+		return this.queue.includes(messageId);
+	}
+}
+
+// Check whether a certain agi is in the queue under concurrent circumstances.
+// To avoid edge cases caused by more than two threads checking simultaneously during concurrent checks, we introduce a lock.
+const checkQueueMutex = new Mutex();
+export async function checkAndAddToQueue(
+	orderId: number,
+	addToQueueHandler: () => void
+): Promise<boolean> {
+	const release = await checkQueueMutex.acquire(); // try to get the lock
+	try {
+		const isInAgiQueue = agiQueueManager.checkIfTaskIsInAgiQueue(orderId);
+
+		if (!isInAgiQueue) {
+			addToQueueHandler();
+			return true;
+		} else {
+			logger.item(`⛔️ Agi #${orderId} is already in queue, skipping...`);
+			return false;
+		}
+	} finally {
+		release(); // release the lock
 	}
 }
 
