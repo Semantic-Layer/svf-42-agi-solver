@@ -317,5 +317,6 @@ export const defaultSwap = async (
 		}
 	} catch (error) {
 		logger.error(`Error executing swap: ${error}`);
+		throw new Error('Error when executing swap', { cause: error });
 	}
 };
