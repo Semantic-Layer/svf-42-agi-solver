@@ -6,7 +6,7 @@ import {
 	publicClientWSS,
 } from './clients.ts';
 import { type Hex } from 'viem';
-import { agiQueueManager } from './AGIQueueManager.ts';
+import { agiQueueManager, checkAndAddToQueue } from './AGIQueueManager.ts';
 
 // call the contract function getProcessedAGIs
 const BATCH_SIZE = 50;
@@ -26,7 +26,7 @@ const getProcessedAGIIds = async (startIndex: number, endIndex: number) => {
 		const batchResult = (await publicClientHTTP.readContract({
 			address: agiContractAddress as Hex,
 			abi: agiContractABI,
-			functionName: 'getProcessedAGIs',
+			functionName: 'getProcessedOrderIdsRange',
 			args: [i, batchEndIndex + 1],
 		})) as number[];
 
@@ -132,7 +132,7 @@ const processPendingAGIs = async (startId = 1) => {
 
 		for (const agiId of unprocessedAGIs) {
 			logger.info(`adding task #${agiId} to the queue`);
-			agiQueueManager.add(agiId);
+			await checkAndAddToQueue(Number(agiId), () => agiQueueManager.add(Number(agiId)));
 		}
 
 		logger.success(`All ${unprocessedAGIs.length} tasks added to the queue`);
@@ -168,7 +168,7 @@ export default async function startListener() {
 							orderStatus: orderStatus,
 						});
 
-						agiQueueManager.add(orderId);
+						await checkAndAddToQueue(Number(orderId), () => agiQueueManager.add(Number(orderId)));
 					} catch (error) {
 						logger.error('ERROR PROCESSING EVENT');
 						logger.item('Error processing YeetCreated event:');
