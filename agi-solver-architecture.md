@@ -16,7 +16,16 @@ graph TB
     subgraph "Solver Service"
         EventListener[Event Listener]
         QueueManager[AGI Queue Manager]
-        SwapEngine[Swap Engine]
+        
+        subgraph "Swap Engine"
+            PriceFetcher[Price Fetcher]
+            QuoteFetcher[Quote Fetcher]
+            AllowanceManager[Allowance Manager]
+            Permit2Signer[Permit2 Signer]
+            TransactionSubmitter[Transaction Submitter]
+            SwapExecutor[Swap Executor]
+        end
+        
         RetryLogic[Retry Logic]
     end
 
@@ -35,24 +44,34 @@ graph TB
     EventListener --> QueueManager
     
     %% Queue Processing
-    QueueManager --> SwapEngine
+    QueueManager --> SwapExecutor
     QueueManager --> RetryLogic
     
-    %% Swap Execution
-    SwapEngine --> ZeroExAPI
-    SwapEngine --> LifiAPI
-    SwapEngine --> FailedDB
+    %% Swap Engine Internal Flow
+    SwapExecutor --> PriceFetcher
+    SwapExecutor --> QuoteFetcher
+    SwapExecutor --> AllowanceManager
+    SwapExecutor --> Permit2Signer
+    SwapExecutor --> TransactionSubmitter
+    
+    %% External API Calls
+    PriceFetcher --> ZeroExAPI
+    QuoteFetcher --> ZeroExAPI
+    SwapExecutor --> LifiAPI
+    SwapExecutor --> FailedDB
     
     %% Order Completion
-    SwapEngine --> Warehouse13
+    TransactionSubmitter --> Warehouse13
     
     %% Styling
     classDef contractLayer fill:#f3e5f5
     classDef serviceLayer fill:#e8f5e8
+    classDef swapEngineLayer fill:#fff3e0
     classDef externalLayer fill:#ffebee
     
     class Warehouse13 contractLayer
-    class EventListener,QueueManager,SwapEngine,RetryLogic serviceLayer
+    class EventListener,QueueManager,RetryLogic serviceLayer
+    class PriceFetcher,QuoteFetcher,AllowanceManager,Permit2Signer,TransactionSubmitter,SwapExecutor swapEngineLayer
     class ZeroExAPI,LifiAPI,FailedDB externalLayer
 ```
 
