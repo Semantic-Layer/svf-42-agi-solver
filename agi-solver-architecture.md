@@ -1,5 +1,15 @@
 # AGI Solver Mermaid Diagrams
 
+## Why We Built This
+
+The AGI Solver was built to bridge the gap between AI agents and blockchain interactions, enabling seamless execution of complex on-chain operations through AGI(Agent Generated Intent) processing. It empowers AI agents to interact with any on-chain protocol or smart contract reliably and efficiently, allowing them to focus on high-level decision-making and strategic reasoning while handling the technical complexities.
+
+The solver acts as a critical middleware layer that processes and validates agent-generated intents, manages complex transaction flows across any on-chain protocol, provides retry mechanisms and error handling, and optimizes gas costs and execution strategies. This universal protocol support ensures dependable processing of agent-generated intents, enabling AI agents to concentrate on their core strengths while the solver handles all technical aspects of blockchain interactions.
+
+## Future Improvements
+
+Currently, we support token swaps as our core functionality. Our roadmap includes expanding to support more DeFi protocols, cross-chain operations, and more.
+
 ## System Architecture
 
 ```mermaid
@@ -79,7 +89,7 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant U as User
+    participant A as AI Agent
     participant C as Contract
     participant E as Event Listener
     participant Q as Queue Manager
@@ -87,7 +97,7 @@ sequenceDiagram
     participant Z as 0x API
 
     %% Order Publishing
-    U->>C: publishAGI
+    A->>C: publishAGI
     C->>E: AGIPublished Event
 
     %% Queue Management
@@ -122,41 +132,16 @@ sequenceDiagram
 ## Order Status Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> PendingDispense: Order Published
+graph LR
+    Start([*]) --> PendingDispense[PendingDispense<br/>Status 0]
+    PendingDispense --> DispensedPendingProceeds[DispensedPendingProceeds<br/>Status 1]
+    DispensedPendingProceeds --> SwapInitiated[SwapInitiated<br/>Status 3]
+    SwapInitiated --> SwapCompleted[SwapCompleted<br/>Status 4]
+    SwapInitiated --> Failed[Failed<br/>Max Retries]
+    SwapCompleted --> ProceedsReceived[ProceedsReceived<br/>Status 2]
+    ProceedsReceived --> Completed[Completed<br/>Order Complete]
 
-    PendingDispense --> DispensedPendingProceeds: withdrawAsset
-    DispensedPendingProceeds --> SwapInitiated: Internal State
-
-    SwapInitiated --> SwapCompleted: Swap Success
-    SwapInitiated --> SwapInitiated: Swap Failed (Retry)
-    SwapInitiated --> Failed: Max Retries Exceeded
-
-    SwapCompleted --> ProceedsReceived: depositAsset
-    ProceedsReceived --> Completed: Order Complete
-
-    note right of PendingDispense
-        Status 0: Initial state
-        Waiting for asset withdrawal
-    end note
-
-    note right of DispensedPendingProceeds
-        Status 1: Asset withdrawn
-        Ready for swap execution
-    end note
-
-    note right of SwapInitiated
-        Status 3: Internal state
-        Swap operation in progress
-    end note
-
-    note right of SwapCompleted
-        Status 4: Internal state
-        Swap completed, ready to deposit
-    end note
-
-    note right of ProceedsReceived
-        Status 2: Final state
-        All operations completed
-    end note
+    style Start fill:#000
+    style Completed fill:#4CAF50
+    style Failed fill:#f44336
 ```
