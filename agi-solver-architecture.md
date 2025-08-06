@@ -130,10 +130,10 @@ stateDiagram-v2
     
     SwapInitiated --> SwapCompleted: Swap Success
     SwapInitiated --> SwapInitiated: Swap Failed (Retry)
-    SwapInitiated --> [*]: Max Retries Exceeded
+    SwapInitiated --> Failed: Max Retries Exceeded
     
     SwapCompleted --> ProceedsReceived: depositAsset
-    ProceedsReceived --> [*]: Order Complete
+    ProceedsReceived --> Completed: Order Complete
     
     note right of PendingDispense
         Status 0: Initial state
