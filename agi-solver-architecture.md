@@ -133,15 +133,15 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    Start([*]) --> PendingDispense[PendingDispense<br/>Status 0]
-    PendingDispense --> DispensedPendingProceeds[DispensedPendingProceeds<br/>Status 1]
-    DispensedPendingProceeds --> SwapInitiated[SwapInitiated<br/>Status 3]
-    SwapInitiated --> SwapCompleted[SwapCompleted<br/>Status 4]
-    SwapInitiated --> Failed[Failed<br/>Max Retries]
-    SwapCompleted --> ProceedsReceived[ProceedsReceived<br/>Status 2]
-    ProceedsReceived --> Completed[Completed<br/>Order Complete]
+    Start([Start]) --> PendingDispense[PendingDispense]
+    PendingDispense --> DispensedPendingProceeds[DispensedPendingProceeds]
+    DispensedPendingProceeds --> SwapInitiated[SwapInitiated]
+    SwapInitiated --> SwapCompleted[SwapCompleted]
+    SwapInitiated --> Failed[Failed]
+    SwapCompleted --> ProceedsReceived[ProceedsReceived]
+    ProceedsReceived --> Completed[Completed]
 
-    style Start fill:#000
+    style Start fill:#4CAF50
     style Completed fill:#4CAF50
     style Failed fill:#f44336
 ```
